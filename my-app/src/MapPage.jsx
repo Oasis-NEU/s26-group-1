@@ -22,8 +22,8 @@ export default function MapPage() {
       <div
         id="map"
         style={{
-          width: "100%",
-          height: "80vh",
+          width: "50vh",
+          height: "50vh",
           backgroundColor: "#eee",
           border: "1px solid #ccc",
         }}
