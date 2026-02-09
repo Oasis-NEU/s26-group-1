@@ -25,7 +25,7 @@ export default function MapPage() {
           width: "50vh",
           height: "50vh",
           backgroundColor: "#eee",
-          border: "1px solid #ccc",
+          border: "8px solid #A84D48",
         }}
       />
     </div>
