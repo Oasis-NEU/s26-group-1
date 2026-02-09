@@ -7,9 +7,11 @@ import MapPage from "./MapPage";
 
 function Home() {
   return (
-    <div style={{ padding: "150px" }}>
-      <h1>Home</h1>
-      <p>Welcome to Lost & Hound!</p>
+    <div className = "home-page">
+      <div className= "home-inner">
+        <h1 style={{ fontSize: "6rem" }}>You're Home!</h1>
+        <p style={{ fontSize: "2.5rem" }}>Welcome to the Lost & Hound</p>
+      </div>
     </div>
   );
 }

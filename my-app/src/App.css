@@ -1,8 +1,10 @@
+:root { --nav-height: 56px; }
+
 #root {
-  max-width: 1280px;
-  margin: 0 auto;
-  padding: 2rem;
-  text-align: center;
+  margin: 0;
+  padding: 0;
+  max-width: none;
+  text-align: left;
 }
 
 .logo {
@@ -41,8 +43,32 @@
   color: #888;
 }
 
+.home-page {
+  width: 100%;
+  margin: 0 auto;
+  min-height: calc(100vh - 72px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  box-sizing: border-box;
+}
+
+.home-page h1, .home-page p {
+  margin-left: 0;
+  margin-right: 0;
+  text-align: center;
+}
+
+.home-inner {
+  width: 100%;
+  text-align: center;
+  max-width: 900px;
+  margin: 0 auto;
+}
+
 .top-nav {
-  position: fixed;     /* always stuck to the top */
+  position: fixed;
   top: 0;
   left: 0;
   right: 0;
@@ -78,5 +104,39 @@
 
 .page-content {
   padding-top: 56px; /* adjust to match nav height */
+  padding-left: 0;
+  padding-right: 0;
 }
 
+.map-page {
+  display: flex;
+  justify-content: flex-end;
+  width: 100vw;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+.map-column {
+  width: 50vw;
+  height: calc(100vh - var(--nav-height));
+  box-sizing: border-box;
+  padding: 24px;
+
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.map-header {
+  flex: 0 0 auto;
+  text-align: center;
+}
+
+.map-box {
+  flex: 1 1 auto;
+  min-height: 0;
+  border: 8px solid #A84D48;
+  border-radius: 8px;
+  overflow: hidden;
+  background: #eee;
+}
