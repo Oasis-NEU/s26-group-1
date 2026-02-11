@@ -98,6 +98,13 @@
   line-height: 1; /* keeps bar from stretching with size changes to font */
 }
 
+.top-nav span {
+  color: #A84D48;
+  font-family: inherit;
+  font-weight: 900;
+  font-size: 20px;
+}
+
 .top-nav a:hover {
   background: #e0756f37;
 }
