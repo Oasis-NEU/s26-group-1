@@ -8,6 +8,7 @@ import HomeIcon from '@mui/icons-material/Home';
 import MapIcon from '@mui/icons-material/Map';
 import LogoutIcon from '@mui/icons-material/Logout';
 
+// --- Home: Displays the home page content ---
 function Home() {
   return (
     <Container maxWidth="md">
@@ -32,6 +33,7 @@ function Home() {
   );
 }
 
+// --- App: Main application component with routing and navigation ---
 export default function App() {
   const { user, logout } = useAuth();
 

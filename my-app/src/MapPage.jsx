@@ -7,6 +7,7 @@ setOptions({
   v: "weekly",
 });
 
+// --- MapPage: Displays the campus map and map-related UI ---
 export default function MapPage() {
   useEffect(() => {
     importLibrary("maps").then(({ Map }) => {

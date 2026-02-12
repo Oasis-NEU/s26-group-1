@@ -8,6 +8,7 @@ import "./index.css";
 import App from "./App.jsx";
 
 // Custom theme with Northeastern colors
+// --- theme: Custom MUI theme with Northeastern colors ---
 const theme = createTheme({
   palette: {
     primary: {

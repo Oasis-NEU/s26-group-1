@@ -1,5 +1,7 @@
+/* --- Root variables --- */
 :root { --nav-height: 56px; }
 
+/* --- Root container styles --- */
 #root {
   margin: 0;
   padding: 0;
@@ -7,6 +9,7 @@
   text-align: left;
 }
 
+/* --- Logo styles --- */
 .logo {
   height: 6em;
   padding: 1.5em;
@@ -20,6 +23,7 @@
   filter: drop-shadow(0 0 2em #61dafbaa);
 }
 
+/* --- Logo spin animation --- */
 @keyframes logo-spin {
   from {
     transform: rotate(0deg);
@@ -29,20 +33,24 @@
   }
 }
 
+/* --- Reduced motion media query --- */
 @media (prefers-reduced-motion: no-preference) {
   a:nth-of-type(2) .logo {
     animation: logo-spin infinite 20s linear;
   }
 }
 
+/* --- Card styles --- */
 .card {
   padding: 2em;
 }
 
+/* --- Docs link styles --- */
 .read-the-docs {
   color: #888;
 }
 
+/* --- Home page layout --- */
 .home-page {
   width: 100%;
   margin: 0 auto;
@@ -60,6 +68,7 @@
   text-align: center;
 }
 
+/* --- Home inner container --- */
 .home-inner {
   width: 100%;
   text-align: center;
@@ -67,6 +76,7 @@
   margin: 0 auto;
 }
 
+/* --- Top navigation bar --- */
 .top-nav {
   position: fixed;
   top: 0;
@@ -87,6 +97,8 @@
 }
 
 /* Makes the nav links look like tabs */
+/* --- Navigation link styles --- */
+/* --- .top-nav a: Navigation link styles (tab look) --- */
 .top-nav a {
   text-decoration: none;
   color: #A84D48;
@@ -98,6 +110,7 @@
   line-height: 1; /* keeps bar from stretching with size changes to font */
 }
 
+/* --- .top-nav span: Navigation bar text (e.g., user email) --- */
 .top-nav span {
   color: #A84D48;
   font-family: inherit;
@@ -105,16 +118,19 @@
   font-size: 20px;
 }
 
+/* --- .top-nav a:hover: Nav link hover effect --- */
 .top-nav a:hover {
   background: #e0756f37;
 }
 
+/* --- .page-content: Main content area below nav --- */
 .page-content {
   padding-top: 56px; /* adjust to match nav height */
   padding-left: 0;
   padding-right: 0;
 }
 
+/* --- .map-page: Map page layout container --- */
 .map-page {
   display: flex;
   justify-content: flex-end;
@@ -123,6 +139,7 @@
   box-sizing: border-box;
 }
 
+/* --- .map-column: Column for map and controls --- */
 .map-column {
   width: 50vw;
   height: calc(100vh - var(--nav-height));
@@ -134,6 +151,7 @@
   gap: 12px;
 }
 
+/* --- .map-header: Header section for map page --- */
 .map-header {
   flex: 0 0 auto;
   text-align: center;

@@ -3,10 +3,12 @@ import { supabase } from "./supabaseClient";
 
 const AuthContext = createContext();
 
+// --- useAuth: Custom hook to access AuthContext ---
 export function useAuth() { // added shortcut instead of useAuth(AuthContext)
   return useContext(AuthContext);
 }
 
+// --- AuthProvider: Provides authentication context to children ---
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);

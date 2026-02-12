@@ -1,9 +1,11 @@
+/* --- Root font and base styles --- */
 :root {
   font-family: 'Nunito', system-ui, Avenir, Helvetica, Arial, sans-serif;
   line-height: 1.5;
   font-weight: 400;
 }
 
+/* --- HTML and Body layout --- */
 html, body {
   width: 100%;
   height: 100%;
@@ -11,12 +13,14 @@ html, body {
   padding: 0;
 }
 
+/* --- Body block display --- */
 body {
   display: block;
   min-width: 320px;
   min-height: 100vh;
 }
 
+/* --- Root container --- */
 #root {
   width: 100%;
   margin: 0;

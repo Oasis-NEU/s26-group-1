@@ -14,6 +14,7 @@ import {
 import LockOutlinedIcon from "@mui/icons-material/LockOutlined";
 import Avatar from "@mui/material/Avatar";
 
+// --- LoginPage Component: Handles login and signup forms ---
 export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -24,6 +25,7 @@ export default function LoginPage() {
   const [message, setMessage] = useState("");
   const theme = useTheme();
 
+  // --- handleSubmit: Handles form submission for login/signup ---
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
@@ -89,6 +91,7 @@ export default function LoginPage() {
     }
   };
 
+  // --- handleForgotPassword: Handles password reset requests ---
   const handleForgotPassword = async () => {
     setError("");
     setMessage("");
@@ -244,6 +247,7 @@ export default function LoginPage() {
   );
 }
 
+// --- cleanErrorMessage: Cleans up error messages for display ---
 function cleanErrorMessage(errorMsg) {
   if (!errorMsg) return "Something went wrong. Please try again.";
   if (errorMsg.toLowerCase().includes("user already registered")) return "An account with this email already exists.";
