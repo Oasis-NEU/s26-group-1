@@ -17,6 +17,8 @@ import Avatar from "@mui/material/Avatar";
 export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [firstName, setFirstName] = useState("");   // NEW
+  const [lastName, setLastName] = useState("");     // NEW
   const [isSignUp, setIsSignUp] = useState(false);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
@@ -32,28 +34,49 @@ export default function LoginPage() {
       return;
     }
 
+    if (isSignUp && (!firstName.trim() || !lastName.trim())) {
+      setError("Please enter your first and last name.");
+      return;
+    }
+
     try {
       if (isSignUp) {
         const { data, error: signUpError } = await supabase.auth.signUp({
           email,
           password,
         });
-        
+
         if (signUpError) {
-          console.log('Supabase signup error:', signUpError);
-          setError(cleanErrorMessage(signUpError.message || signUpError.code || 'Unknown error'));
-          setMessage("");
+          setError(cleanErrorMessage(signUpError.message || signUpError.code || "Unknown error"));
           return;
         }
-        
-        // Check if email already exists (Supabase returns success but with empty identities array)
+
         if (data.user && data.user.identities && data.user.identities.length === 0) {
           setError("An account with this email already exists.");
-          setMessage("");
           return;
         }
-        
+
+        // ✅ Save first + last name to profiles table
+        if (data.user) {
+          const { error: profileErr } = await supabase.from("profiles").upsert(
+            {
+              id: data.user.id,
+              first_name: firstName.trim(),
+              last_name: lastName.trim(),
+            },
+            { onConflict: "id" }
+          );
+
+          if (profileErr) {
+            console.error("Profile insert error:", profileErr);
+            setError("Account created, but failed to save name. Please try logging in again.");
+            return;
+          }
+        }
+
         setMessage("Account created! Check your Northeastern email for a verification link.");
+        setFirstName("");
+        setLastName("");
       } else {
         const { error: signInError } = await supabase.auth.signInWithPassword({
           email,
@@ -89,12 +112,7 @@ export default function LoginPage() {
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        //background: `linear-gradient(135deg, ${theme.palette.primary.light} 0%, ${theme.palette.primary.main} 45%, ${theme.palette.primary.dark} 100%)`,
-        //background: `radial-gradient(circle at center, ${theme.palette.primary.light} 20%, ${theme.palette.primary.main} 80%, ${theme.palette.primary.dark} 100%)`,
-        //background: `radial-gradient(circle at center, #f44336 20%, #1b1b22 80%, #2a1f24 100%)`,
-        //background: "linear-gradient(135deg, #0f0f14 0%, #1b1b22 40%, #2a1f24 100%)",
         background: "linear-gradient(135deg, #f44336 0%, #913c36 40%, #2a1f24 100%)",
-        //background: `radial-gradient(circle at center, #a03d35 20%, #622e2b 80%, #2a1f24 100%)`,
         px: 2,
       }}
     >
@@ -122,6 +140,27 @@ export default function LoginPage() {
           </Box>
 
           <Box component="form" onSubmit={handleSubmit} noValidate>
+            {isSignUp && (
+              <>
+                <TextField
+                  margin="normal"
+                  required
+                  fullWidth
+                  label="First Name"
+                  value={firstName}
+                  onChange={(e) => setFirstName(e.target.value)}
+                />
+                <TextField
+                  margin="normal"
+                  required
+                  fullWidth
+                  label="Last Name"
+                  value={lastName}
+                  onChange={(e) => setLastName(e.target.value)}
+                />
+              </>
+            )}
+
             <TextField
               margin="normal"
               required
@@ -135,6 +174,7 @@ export default function LoginPage() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
             />
+
             <TextField
               margin="normal"
               required
@@ -149,6 +189,7 @@ export default function LoginPage() {
               onChange={(e) => setPassword(e.target.value)}
               inputProps={{ minLength: 6 }}
             />
+
             <Button type="submit" fullWidth variant="contained" sx={{ mt: 3, mb: 2 }}>
               {isSignUp ? "Sign Up" : "Log In"}
             </Button>
@@ -189,6 +230,8 @@ export default function LoginPage() {
                 setIsSignUp(!isSignUp);
                 setError("");
                 setMessage("");
+                setFirstName("");
+                setLastName("");
               }}
               sx={{ cursor: "pointer" }}
             >
