@@ -6,6 +6,18 @@ import {
   sendPasswordResetEmail,
 } from "firebase/auth";
 import { auth } from "./firebase";
+import {
+  Container,
+  Paper,
+  TextField,
+  Button,
+  Typography,
+  Box,
+  Alert,
+  Link as MuiLink,
+} from '@mui/material';
+import LockOutlinedIcon from '@mui/icons-material/LockOutlined';
+import Avatar from '@mui/material/Avatar';
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
@@ -53,88 +65,110 @@ export default function LoginPage() {
   };
 
   return (
-    <div style={{ maxWidth: 400, margin: "100px auto", padding: 20 }}>
-      <h1>Lost & Hound</h1>
-      <h2>{isSignUp ? "Sign Up" : "Log In"}</h2>
-      <form onSubmit={handleSubmit}>
-        <div style={{ marginBottom: 12 }}>
-          <input
-            type="email"
-            placeholder="you@northeastern.edu"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-            style={{ width: "100%", padding: 8 }}
-          />
-        </div>
-        <div style={{ marginBottom: 12 }}>
-          <input
-            type="password"
-            placeholder="Password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-            minLength={6}
-            style={{ width: "100%", padding: 8 }}
-          />
-        </div>
-        <button type="submit" style={{ width: "100%", padding: 10 }}>
-          {isSignUp ? "Sign Up" : "Log In"}
-        </button>
-      </form>
+    <Container component="main" maxWidth="xs">
+      <Box
+        sx={{
+          marginTop: 8,
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+        }}
+      >
+        <Paper elevation={3} sx={{ p: 4, width: '100%' }}>
+          <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', mb: 2 }}>
+            <Avatar sx={{ m: 1, bgcolor: 'primary.main' }}>
+              <LockOutlinedIcon />
+            </Avatar>
+            <Typography component="h1" variant="h4" gutterBottom>
+              Lost & Hound
+            </Typography>
+            <Typography component="h2" variant="h5">
+              {isSignUp ? "Sign Up" : "Log In"}
+            </Typography>
+          </Box>
 
-      {!isSignUp && (
-        <button
-          onClick={handleForgotPassword}
-          style={{ background: "none", border: "none", color: "rgba(255, 255, 255, 0.87)", cursor: "pointer", textDecoration: "underline", marginTop: 10 }}
-        >
-          Forgot password?
-        </button>
-      )}
+          <Box component="form" onSubmit={handleSubmit} noValidate>
+            <TextField
+              margin="normal"
+              required
+              fullWidth
+              id="email"
+              label="Email Address"
+              name="email"
+              autoComplete="email"
+              autoFocus
+              placeholder="you@northeastern.edu"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+            />
+            <TextField
+              margin="normal"
+              required
+              fullWidth
+              name="password"
+              label="Password"
+              type="password"
+              id="password"
+              autoComplete="current-password"
+              placeholder="Password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              inputProps={{ minLength: 6 }}
+            />
+            <Button
+              type="submit"
+              fullWidth
+              variant="contained"
+              sx={{ mt: 3, mb: 2 }}
+            >
+              {isSignUp ? "Sign Up" : "Log In"}
+            </Button>
+          </Box>
 
-      {error && (
-        <div style={{
-          marginTop: 15,
-          padding: "12px 16px",
-          backgroundColor: "#fde8e8",
-          border: "1px solid #f5c6c6",
-          borderRadius: 8,
-          color: "#991b1b",
-          fontSize: "14px",
-          fontWeight: 600,
-        }}>
-          {error}
-        </div>
-      )}
-      {message && (
-        <div style={{
-          marginTop: 15,
-          padding: "12px 16px",
-          backgroundColor: "#e8f5e9",
-          border: "1px solid #c8e6c9",
-          borderRadius: 8,
-          color: "#1b5e20",
-          fontSize: "14px",
-          fontWeight: 600,
-        }}>
-          {message}
-        </div>
-      )}
+          {!isSignUp && (
+            <Box sx={{ textAlign: 'center' }}>
+              <MuiLink
+                component="button"
+                variant="body2"
+                onClick={handleForgotPassword}
+                sx={{ cursor: 'pointer' }}
+              >
+                Forgot password?
+              </MuiLink>
+            </Box>
+          )}
 
-      <p style={{ marginTop: 20 }}>
-        {isSignUp ? "Already have an account?" : "Don't have an account?"}{" "}
-        <button
-          onClick={() => {
-            setIsSignUp(!isSignUp);
-            setError("");
-            setMessage("");
-          }}
-          style={{ background: "none", border: "none", color: "rgba(255, 255, 255, 0.87)", cursor: "pointer", textDecoration: "underline" }}
-        >
-          {isSignUp ? "Log In" : "Sign Up"}
-        </button>
-      </p>
-    </div>
+          {error && (
+            <Alert severity="error" sx={{ mt: 2 }}>
+              {error}
+            </Alert>
+          )}
+          {message && (
+            <Alert severity="success" sx={{ mt: 2 }}>
+              {message}
+            </Alert>
+          )}
+
+          <Box sx={{ mt: 2, textAlign: 'center' }}>
+            <Typography variant="body2" component="span">
+              {isSignUp ? "Already have an account?" : "Don't have an account?"}{" "}
+            </Typography>
+            <MuiLink
+              component="button"
+              variant="body2"
+              onClick={() => {
+                setIsSignUp(!isSignUp);
+                setError("");
+                setMessage("");
+              }}
+              sx={{ cursor: 'pointer' }}
+            >
+              {isSignUp ? "Log In" : "Sign Up"}
+            </MuiLink>
+          </Box>
+        </Paper>
+      </Box>
+    </Container>
   );
 }
 

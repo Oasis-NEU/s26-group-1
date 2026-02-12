@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 import { setOptions, importLibrary } from "@googlemaps/js-api-loader";
+import { Box, Typography, Paper } from '@mui/material';
 
 setOptions({
   key: import.meta.env.VITE_GOOGLE_MAPS_API_KEY,
@@ -17,15 +18,36 @@ export default function MapPage() {
   }, []);
 
   return (
-    <div className="map-page">
-      <div className="map-column">
-        <div className="map-header">
-          <h1>Campus Map</h1>
-          <p>Use the map to report lost/found items.</p>
-        </div>
+    <Box
+      sx={{
+        display: 'flex',
+        justifyContent: 'center',
+        width: '100%',
+        p: 3,
+      }}
+    >
+      <Box sx={{ width: '100%', maxWidth: '1200px' }}>
+        <Paper elevation={3} sx={{ p: 3, mb: 2, textAlign: 'center' }}>
+          <Typography variant="h4" gutterBottom>
+            Campus Map
+          </Typography>
+          <Typography variant="body1">
+            Use the map to report lost/found items.
+          </Typography>
+        </Paper>
 
-        <div id="map" className="map-box" />
-      </div>
-    </div>
+        <Paper
+          elevation={3}
+          sx={{
+            height: 'calc(100vh - 300px)',
+            minHeight: '400px',
+            overflow: 'hidden',
+            borderRadius: 2,
+          }}
+        >
+          <Box id="map" sx={{ width: '100%', height: '100%' }} />
+        </Paper>
+      </Box>
+    </Box>
   );
 }
