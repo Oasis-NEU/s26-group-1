@@ -1,12 +1,25 @@
 import './App.css';
 import { Routes, Route, Link } from "react-router-dom";
+import { supabase } from "./supabaseClient";
 import { useAuth } from "./AuthContext";
 import LoginPage from "./LoginPage";
 import MapPage from "./MapPage";
+import SettingsPage from "./SettingsPage";
 import { AppBar, Toolbar, Button, Typography, Container, Box, Paper } from '@mui/material';
 import HomeIcon from '@mui/icons-material/Home';
 import MapIcon from '@mui/icons-material/Map';
+import SettingsIcon from '@mui/icons-material/Settings';
 import LogoutIcon from '@mui/icons-material/Logout';
+import { useState } from 'react';
+
+// --- Silly joke background for homepage ---
+const sillyBg = {
+  position: "fixed",
+  inset: 0,
+  zIndex: -1,
+  background: `url('/src/assets/raccoon-lollipop.jpg') center/cover no-repeat`,
+  pointerEvents: "none", // Allow clicks to pass through
+};
 
 // --- Home: Displays the home page content ---
 function Home() {
@@ -35,7 +48,7 @@ function Home() {
 
 // --- App: Main application component with routing and navigation ---
 export default function App() {
-  const { user, logout } = useAuth();
+  const { user, profile, logout } = useAuth();
 
   if (!user) {
     return <LoginPage />;
@@ -45,6 +58,8 @@ export default function App() {
 
   return (
     <>
+      <div style={sillyBg} />
+      {/* Main app content overlayed above background */}
       <AppBar position="fixed">
         <Toolbar>
           <Button
@@ -66,7 +81,9 @@ export default function App() {
           </Button>
           <Box sx={{ flexGrow: 1 }} />
           <Typography variant="body1" sx={{ mr: 2 }}>
-            {user.email}
+            {profile?.first_name && profile?.last_name
+              ? profile.first_name + " " + profile.last_name
+              : user.email}
           </Typography>
           <Button
             color="inherit"
@@ -75,13 +92,22 @@ export default function App() {
           >
             Log Out
           </Button>
+          <Button
+          color = "inherit"
+          component={Link}
+          to="/settings"
+          endIcon = {<SettingsIcon />}
+          >
+            Settings
+          </Button>
         </Toolbar>
       </AppBar>
       <Toolbar /> {/* Spacer for fixed AppBar */}
-      <Box sx={{ mt: 2 }}>
+      <Box sx={{ mt: 0 }}>
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/map" element={<MapPage />} />
+          <Route path = "/settings" element={<SettingsPage />} />
         </Routes>
       </Box>
     </>

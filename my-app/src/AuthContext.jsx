@@ -12,6 +12,7 @@ export function useAuth() { // added shortcut instead of useAuth(AuthContext)
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [profile, setProfile] = useState(null);
 
   useEffect(() => {
     // Supabase equivalent for auth state change
@@ -29,16 +30,38 @@ export function AuthProvider({ children }) {
     };
   }, []);
 
+  // Fetch profile info when user changes
+  useEffect(() => {
+    const fetchProfile = async () => {
+      if (!user?.id) {
+        setProfile(null);
+        return;
+      }
+      console.log('Fetching profile for user:', user.id);
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('first_name, last_name')
+        .eq('id', user.id)
+        .single();
+      console.log('Profile fetch result:', { data, error });
+      setProfile(error ? null : data);
+    };
+    fetchProfile();
+  }, [user]);
+
   const logout = async () => {
     await supabase.auth.signOut();
   };
 
-  // Just a loading thing while firebase verifies
+  // Forgot password function
+  const forgotPassword = async (email) => {
+    return supabase.auth.resetPasswordForEmail(email);
+  };
+
   if (loading) return <div>Loading...</div>;
 
-  // Make user and the logout available to all child components
   return (
-    <AuthContext.Provider value={{ user, logout }}>
+    <AuthContext.Provider value={{ user, profile, logout, forgotPassword }}>
       {children}
     </AuthContext.Provider>
   );
