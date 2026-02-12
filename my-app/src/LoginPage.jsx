@@ -1,11 +1,5 @@
 import { useState } from "react";
-import {
-  createUserWithEmailAndPassword,
-  signInWithEmailAndPassword,
-  sendEmailVerification,
-  sendPasswordResetEmail,
-} from "firebase/auth";
-import { auth } from "./firebase";
+import { supabase } from "./supabaseClient";
 import {
   Container,
   Paper,
@@ -40,14 +34,35 @@ export default function LoginPage() {
 
     try {
       if (isSignUp) {
-        const result = await createUserWithEmailAndPassword(auth, email, password);
-        await sendEmailVerification(result.user);
+        const { data, error: signUpError } = await supabase.auth.signUp({
+          email,
+          password,
+        });
+        
+        if (signUpError) {
+          console.log('Supabase signup error:', signUpError);
+          setError(cleanErrorMessage(signUpError.message || signUpError.code || 'Unknown error'));
+          setMessage("");
+          return;
+        }
+        
+        // Check if email already exists (Supabase returns success but with empty identities array)
+        if (data.user && data.user.identities && data.user.identities.length === 0) {
+          setError("An account with this email already exists.");
+          setMessage("");
+          return;
+        }
+        
         setMessage("Account created! Check your Northeastern email for a verification link.");
       } else {
-        await signInWithEmailAndPassword(auth, email, password);
+        const { error: signInError } = await supabase.auth.signInWithPassword({
+          email,
+          password,
+        });
+        if (signInError) throw signInError;
       }
     } catch (err) {
-      setError(cleanErrorMessage(err.code));
+      setError(cleanErrorMessage(err.message || err.code));
     }
   };
 
@@ -59,10 +74,11 @@ export default function LoginPage() {
       return;
     }
     try {
-      await sendPasswordResetEmail(auth, email);
+      const { error: resetError } = await supabase.auth.resetPasswordForEmail(email);
+      if (resetError) throw resetError;
       setMessage("Password reset email sent! Check your inbox.");
     } catch (err) {
-      setError(cleanErrorMessage(err.code));
+      setError(cleanErrorMessage(err.message || err.code));
     }
   };
 
@@ -185,22 +201,14 @@ export default function LoginPage() {
   );
 }
 
-function cleanErrorMessage(errorCode) {
-  switch (errorCode) {
-    case "auth/email-already-in-use":
-      return "An account with this email already exists.";
-    case "auth/wrong-password":
-    case "auth/invalid-credential":
-      return "Incorrect email or password.";
-    case "auth/user-not-found":
-      return "No account found with this email.";
-    case "auth/weak-password":
-      return "Password must be at least 6 characters.";
-    case "auth/too-many-requests":
-      return "Too many attempts. Please try again later.";
-    case "auth/invalid-email":
-      return "Please enter a valid email address.";
-    default:
-      return "Something went wrong. Please try again.";
-  }
+function cleanErrorMessage(errorMsg) {
+  if (!errorMsg) return "Something went wrong. Please try again.";
+  if (errorMsg.toLowerCase().includes("user already registered")) return "An account with this email already exists.";
+  if (errorMsg.toLowerCase().includes("email already registered")) return "An account with this email already exists.";
+  if (errorMsg.includes("Invalid login credentials")) return "Incorrect email or password.";
+  if (errorMsg.includes("user not found")) return "No account found with this email.";
+  if (errorMsg.includes("6 characters")) return "Password must be at least 6 characters.";
+  if (errorMsg.includes("rate limit")) return "Too many attempts. Please try again later.";
+  if (errorMsg.includes("valid email")) return "Please enter a valid email address.";
+  return errorMsg;
 }

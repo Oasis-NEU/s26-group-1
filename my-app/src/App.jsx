@@ -1,6 +1,5 @@
 import './App.css';
 import { Routes, Route, Link } from "react-router-dom";
-import { sendEmailVerification } from "firebase/auth";
 import { useAuth } from "./AuthContext";
 import LoginPage from "./LoginPage";
 import MapPage from "./MapPage";
@@ -40,45 +39,7 @@ export default function App() {
     return <LoginPage />;
   }
 
-  if (!user.emailVerified) {
-    const handleResend = async () => { // this is a resend email button
-      try {
-        await sendEmailVerification(user);
-        alert("Verification email resent! Check your inbox.");
-      } catch (err) {
-        alert("Please wait a moment before resending.");
-      }
-    };
-
-    return ( // if the email is not verified we push the verification page; dont wan't kids faking neu emails
-      <Container maxWidth="sm">
-        <Box sx={{ mt: 12, textAlign: 'center' }}>
-          <Paper elevation={3} sx={{ p: 4 }}>
-            <Typography variant="h4" gutterBottom>
-              Verify Your Email
-            </Typography>
-            <Typography variant="body1" sx={{ mb: 2 }}>
-              We sent a verification link to <strong>{user.email}</strong>. Please check your inbox and click the link.
-            </Typography>
-            <Typography variant="body1" sx={{ mb: 3 }}>
-              After verifying, click the button below.
-            </Typography>
-            <Box sx={{ display: 'flex', gap: 2, justifyContent: 'center', mb: 2 }}>
-              <Button variant="contained" onClick={() => window.location.reload()}>
-                I've Verified
-              </Button>
-              <Button variant="outlined" onClick={logout}>
-                Log Out
-              </Button>
-            </Box>
-            <Button onClick={handleResend} sx={{ textTransform: 'none' }}>
-              Resend verification email
-            </Button>
-          </Paper>
-        </Box>
-      </Container>
-    );
-  }
+  // Supabase sends verification emails automatically. Optionally, you can add a check for user.confirmed_at if you want to block unverified users.
 
   return (
     <>
