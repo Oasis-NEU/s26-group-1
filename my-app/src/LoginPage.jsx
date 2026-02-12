@@ -15,9 +15,10 @@ import {
   Box,
   Alert,
   Link as MuiLink,
-} from '@mui/material';
-import LockOutlinedIcon from '@mui/icons-material/LockOutlined';
-import Avatar from '@mui/material/Avatar';
+  useTheme
+} from "@mui/material";
+import LockOutlinedIcon from "@mui/icons-material/LockOutlined";
+import Avatar from "@mui/material/Avatar";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
@@ -25,6 +26,7 @@ export default function LoginPage() {
   const [isSignUp, setIsSignUp] = useState(false);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
+  const theme = useTheme();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -65,18 +67,34 @@ export default function LoginPage() {
   };
 
   return (
-    <Container component="main" maxWidth="xs">
-      <Box
-        sx={{
-          marginTop: 8,
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-        }}
-      >
-        <Paper elevation={3} sx={{ p: 4, width: '100%' }}>
-          <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', mb: 2 }}>
-            <Avatar sx={{ m: 1, bgcolor: 'primary.main' }}>
+    <Box
+      sx={{
+        minHeight: "100vh",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        //background: `linear-gradient(135deg, ${theme.palette.primary.light} 0%, ${theme.palette.primary.main} 45%, ${theme.palette.primary.dark} 100%)`,
+        //background: `radial-gradient(circle at center, ${theme.palette.primary.light} 20%, ${theme.palette.primary.main} 80%, ${theme.palette.primary.dark} 100%)`,
+        //background: `radial-gradient(circle at center, #f44336 20%, #1b1b22 80%, #2a1f24 100%)`,
+        //background: "linear-gradient(135deg, #0f0f14 0%, #1b1b22 40%, #2a1f24 100%)",
+        background: "linear-gradient(135deg, #f44336 0%, #913c36 40%, #2a1f24 100%)",
+        //background: `radial-gradient(circle at center, #a03d35 20%, #622e2b 80%, #2a1f24 100%)`,
+        px: 2,
+      }}
+    >
+      <Container component="main" maxWidth="xs">
+        <Paper
+          elevation={6}
+          sx={{
+            p: 4,
+            width: "100%",
+            borderRadius: 3,
+            backgroundColor: "rgba(255,255,255,0.95)",
+            boxShadow: "0px 10px 30px rgba(0,0,0,0.15)",
+          }}
+        >
+          <Box sx={{ display: "flex", flexDirection: "column", alignItems: "center", mb: 2 }}>
+            <Avatar sx={{ m: 1, bgcolor: "primary.main" }}>
               <LockOutlinedIcon />
             </Avatar>
             <Typography component="h1" variant="h4" gutterBottom>
@@ -115,23 +133,18 @@ export default function LoginPage() {
               onChange={(e) => setPassword(e.target.value)}
               inputProps={{ minLength: 6 }}
             />
-            <Button
-              type="submit"
-              fullWidth
-              variant="contained"
-              sx={{ mt: 3, mb: 2 }}
-            >
+            <Button type="submit" fullWidth variant="contained" sx={{ mt: 3, mb: 2 }}>
               {isSignUp ? "Sign Up" : "Log In"}
             </Button>
           </Box>
 
           {!isSignUp && (
-            <Box sx={{ textAlign: 'center' }}>
+            <Box sx={{ textAlign: "center" }}>
               <MuiLink
                 component="button"
                 variant="body2"
                 onClick={handleForgotPassword}
-                sx={{ cursor: 'pointer' }}
+                sx={{ cursor: "pointer" }}
               >
                 Forgot password?
               </MuiLink>
@@ -149,7 +162,7 @@ export default function LoginPage() {
             </Alert>
           )}
 
-          <Box sx={{ mt: 2, textAlign: 'center' }}>
+          <Box sx={{ mt: 2, textAlign: "center" }}>
             <Typography variant="body2" component="span">
               {isSignUp ? "Already have an account?" : "Don't have an account?"}{" "}
             </Typography>
@@ -161,14 +174,14 @@ export default function LoginPage() {
                 setError("");
                 setMessage("");
               }}
-              sx={{ cursor: 'pointer' }}
+              sx={{ cursor: "pointer" }}
             >
               {isSignUp ? "Log In" : "Sign Up"}
             </MuiLink>
           </Box>
         </Paper>
-      </Box>
-    </Container>
+      </Container>
+    </Box>
   );
 }
 
