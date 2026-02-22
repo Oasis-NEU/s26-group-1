@@ -14,42 +14,6 @@ import SettingsIcon from '@mui/icons-material/Settings';
 import LogoutIcon from '@mui/icons-material/Logout';
 import { useState } from 'react';
 
-/*
-// --- Silly joke background for homepage ---
-const sillyBg = {
-  position: "fixed",
-  inset: 0,
-  zIndex: -1,
-  background: `url('/src/assets/raccoon-lollipop.jpg') center/cover no-repeat`,
-  pointerEvents: "none", // Allow clicks to pass through
-};
-*/
-
-// --- Home: Displays the home page content ---
-function Home() {
-  return (
-    <Container maxWidth="md">
-      <Box
-        sx={{
-          minHeight: 'calc(100vh - 140px)',
-          display: 'flex',
-          flexDirection: 'column',
-          justifyContent: 'center',
-          alignItems: 'center',
-          textAlign: 'center',
-        }}
-      >
-        <Typography variant="h1" sx={{ fontSize: { xs: '3rem', md: '6rem' }, fontWeight: 700, mb: 2 }}>
-          You're Home!
-        </Typography>
-        <Typography variant="h4" sx={{ fontSize: { xs: '1.5rem', md: '2.5rem' } }}>
-          Welcome to the Lost & Hound
-        </Typography>
-      </Box>
-    </Container>
-  );
-}
-
 // --- App: Main application component with routing and navigation ---
 export default function App() {
   const { user, profile, logout } = useAuth();
@@ -65,19 +29,11 @@ export default function App() {
       {/* Main app content overlayed above background */}
       <AppBar position="fixed">
         <Toolbar>
+          {/* TODO: Add logo on far left of navbar */}
           <Button
             color="inherit"
             component={Link}
             to="/"
-            startIcon={<HomeIcon />}
-            sx={{ mr: 2 }}
-          >
-            Home
-          </Button>
-          <Button
-            color="inherit"
-            component={Link}
-            to="/feed"
             startIcon={<FeedIcon />}
             sx={{ mr: 2 }}
           >
@@ -118,10 +74,9 @@ export default function App() {
       <Toolbar /> {/* Spacer for fixed AppBar */}
       <Box sx={{ mt: 0 }}>
         <Routes>
-          <Route path="/" element={<Home />} />
-          <Route path="/feed" element={<FeedPage />} />
+          <Route path="/" element={<FeedPage />} />
           <Route path="/map" element={<MapPage />} />
-          <Route path = "/settings" element={<SettingsPage />} />
+          <Route path="/settings" element={<SettingsPage />} />
         </Routes>
       </Box>
     </>
