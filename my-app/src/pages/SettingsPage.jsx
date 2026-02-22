@@ -1,6 +1,6 @@
 // --- SettingsPage: User account settings UI ---
 import { useState } from "react";
-import { supabase } from "./supabaseClient";
+import { supabase } from "../supabaseClient";
 import {
   Container,
   Paper,
@@ -12,7 +12,7 @@ import {
   Link as MuiLink,
   useTheme
 } from "@mui/material";
-import { useAuth } from "./AuthContext";
+import { useAuth } from "../AuthContext";
 import Avatar from "@mui/material/Avatar";
 import SettingsIcon from '@mui/icons-material/Settings';
 

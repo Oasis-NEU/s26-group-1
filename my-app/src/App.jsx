@@ -2,16 +2,19 @@ import './App.css';
 import { Routes, Route, Link } from "react-router-dom";
 import { supabase } from "./supabaseClient";
 import { useAuth } from "./AuthContext";
-import LoginPage from "./LoginPage";
-import MapPage from "./MapPage";
-import SettingsPage from "./SettingsPage";
+import LoginPage from "./pages/LoginPage";
+import FeedPage from './pages/FeedPage';
+import MapPage from "./pages/MapPage";
+import SettingsPage from "./pages/SettingsPage";
 import { AppBar, Toolbar, Button, Typography, Container, Box, Paper } from '@mui/material';
 import HomeIcon from '@mui/icons-material/Home';
+import FeedIcon from "@mui/icons-material/DynamicFeed";
 import MapIcon from '@mui/icons-material/Map';
 import SettingsIcon from '@mui/icons-material/Settings';
 import LogoutIcon from '@mui/icons-material/Logout';
 import { useState } from 'react';
 
+/*
 // --- Silly joke background for homepage ---
 const sillyBg = {
   position: "fixed",
@@ -20,6 +23,7 @@ const sillyBg = {
   background: `url('/src/assets/raccoon-lollipop.jpg') center/cover no-repeat`,
   pointerEvents: "none", // Allow clicks to pass through
 };
+*/
 
 // --- Home: Displays the home page content ---
 function Home() {
@@ -58,7 +62,6 @@ export default function App() {
 
   return (
     <>
-      <div style={sillyBg} />
       {/* Main app content overlayed above background */}
       <AppBar position="fixed">
         <Toolbar>
@@ -70,6 +73,15 @@ export default function App() {
             sx={{ mr: 2 }}
           >
             Home
+          </Button>
+          <Button
+            color="inherit"
+            component={Link}
+            to="/feed"
+            startIcon={<FeedIcon />}
+            sx={{ mr: 2 }}
+          >
+            Feed
           </Button>
           <Button
             color="inherit"
@@ -86,19 +98,20 @@ export default function App() {
               : user.email}
           </Typography>
           <Button
+            color = "inherit"
+            component={Link}
+            to="/settings"
+            endIcon = {<SettingsIcon />}
+            sx={{ mr: 2 }}
+          >
+            Settings
+          </Button>
+          <Button
             color="inherit"
             onClick={logout}
             endIcon={<LogoutIcon />}
           >
             Log Out
-          </Button>
-          <Button
-          color = "inherit"
-          component={Link}
-          to="/settings"
-          endIcon = {<SettingsIcon />}
-          >
-            Settings
           </Button>
         </Toolbar>
       </AppBar>
@@ -106,6 +119,7 @@ export default function App() {
       <Box sx={{ mt: 0 }}>
         <Routes>
           <Route path="/" element={<Home />} />
+          <Route path="/feed" element={<FeedPage />} />
           <Route path="/map" element={<MapPage />} />
           <Route path = "/settings" element={<SettingsPage />} />
         </Routes>
