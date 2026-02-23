@@ -2,12 +2,13 @@ import { useEffect, useRef, useState, useCallback } from "react";
 import { setOptions, importLibrary } from "@googlemaps/js-api-loader";
 import {
   Box, Typography, Paper, Slider, Chip, IconButton, CircularProgress,
-  Collapse, Button, Modal,
+  Collapse, Button, Modal, Autocomplete, TextField,
 } from "@mui/material";
 import MyLocationIcon from "@mui/icons-material/MyLocation";
 import FilterAltIcon from "@mui/icons-material/FilterAlt";
 import CloseIcon from "@mui/icons-material/Close";
 import ListIcon from "@mui/icons-material/ViewList";
+import SearchIcon from "@mui/icons-material/Search";
 import { supabase } from "../supabaseClient";
 
 setOptions({
@@ -24,6 +25,68 @@ const RADIUS_MARKS = [
   { value: 150, label: "150ft" },
   { value: 300, label: "300ft" },
   { value: 500, label: "500ft" },
+];
+
+// --- Campus buildings ---
+const BUILDINGS = [
+  { name: "Snell Library", lat: 42.3386, lng: -71.0881 },
+  { name: "Curry Student Center", lat: 42.3391, lng: -71.0875 },
+  { name: "Krentzman Quad", lat: 42.3401, lng: -71.0882 },
+  { name: "Ell Hall", lat: 42.3399, lng: -71.0881 },
+  { name: "Richards Hall", lat: 42.3399, lng: -71.0887 },
+  { name: "Shillman Hall", lat: 42.3376, lng: -71.0902 },
+  { name: "Ryder Hall", lat: 42.3367, lng: -71.0906 },
+  { name: "Hayden Hall", lat: 42.3393, lng: -71.0885 },
+  { name: "Robinson Hall", lat: 42.3393, lng: -71.0868 },
+  { name: "Kariotis Hall", lat: 42.3386, lng: -71.0909 },
+  { name: "Mugar Life Sciences", lat: 42.3397, lng: -71.0870 },
+  { name: "Forsyth Building", lat: 42.3386, lng: -71.0899 },
+  { name: "Behrakis Health Sciences", lat: 42.3370, lng: -71.0914 },
+  { name: "Churchill Hall", lat: 42.3388, lng: -71.0889 },
+  { name: "Dodge Hall", lat: 42.3403, lng: -71.0878 },
+  { name: "Dockser Hall", lat: 42.3386, lng: -71.0902 },
+  { name: "Lake Hall", lat: 42.3383, lng: -71.0908 },
+  { name: "Holmes Hall", lat: 42.3381, lng: -71.0908 },
+  { name: "Nightingale Hall", lat: 42.3381, lng: -71.0901 },
+  { name: "Meserve Hall", lat: 42.3376, lng: -71.0909 },
+  { name: "Stearns Center", lat: 42.3390, lng: -71.0914 },
+  { name: "Cullinane Hall", lat: 42.3383, lng: -71.0892 },
+  { name: "White Hall", lat: 42.3420, lng: -71.0905 },
+  { name: "West Village F", lat: 42.3373, lng: -71.0914 },
+  { name: "West Village G", lat: 42.3380, lng: -71.0922 },
+  { name: "West Village H", lat: 42.3388, lng: -71.0921 },
+  { name: "International Village", lat: 42.3350, lng: -71.0888 },
+  { name: "Stetson West", lat: 42.3412, lng: -71.0903 },
+  { name: "LightView", lat: 42.3371, lng: -71.0855 },
+  { name: "Speare Hall", lat: 42.3407, lng: -71.0897 },
+  { name: "Willis Hall", lat: 42.3382, lng: -71.0913 },
+  { name: "Smith Hall", lat: 42.3425, lng: -71.0906 },
+  { name: "Rubenstein Hall", lat: 42.3383, lng: -71.0935 },
+  { name: "Melvin Hall", lat: 42.3421, lng: -71.0912 },
+  { name: "Hastings Hall", lat: 42.3381, lng: -71.0908 },
+  { name: "Cabot Center", lat: 42.3393, lng: -71.0893 },
+  { name: "Marino Rec Center", lat: 42.3402, lng: -71.0903 },
+  { name: "Parsons Field", lat: 42.3374, lng: -71.1140 },
+  { name: "ISEC", lat: 42.3377, lng: -71.0870 },
+  { name: "Egan Research Center", lat: 42.3377, lng: -71.0889 },
+  { name: "Khoury College", lat: 42.3385, lng: -71.0923 },
+  { name: "East Village", lat: 42.3404, lng: -71.0869 },
+  { name: "Alumni Center", lat: 42.3377, lng: -71.0853 },
+  { name: "Ruggles MBTA", lat: 42.3371, lng: -71.0894 },
+  { name: "NEU MBTA (Green)", lat: 42.3404, lng: -71.0894 },
+  { name: "Centennial Common", lat: 42.3371, lng: -71.0905 },
+  { name: "O'Bryant Institute", lat: 42.3376, lng: -71.0913 },
+  { name: "Columbus Garage", lat: 42.3380, lng: -71.0864 },
+  { name: "Renaissance Garage", lat: 42.3363, lng: -71.0884 },
+  { name: "Stetson East", lat: 42.3414, lng: -71.0902 },
+];
+
+// --- Hide outside noise ---
+const CLEAN_STYLES = [
+  { featureType: "poi", stylers: [{ visibility: "off" }] },
+  { featureType: "transit", stylers: [{ visibility: "off" }] },
+  { featureType: "road", elementType: "labels", stylers: [{ visibility: "off" }] },
+  { featureType: "administrative", elementType: "labels", stylers: [{ visibility: "off" }] },
 ];
 
 /**
@@ -202,7 +265,7 @@ export default function MapPage() {
     let cancelled = false;
     (async () => {
       const { Map } = await importLibrary("maps");
-      await importLibrary("marker");
+      const { AdvancedMarkerElement } = await importLibrary("marker");
       if (cancelled || !mapRef.current) return;
 
       const map = new Map(mapRef.current, {
@@ -223,6 +286,7 @@ export default function MapPage() {
         setSearchPin(pos);
         setShowPanel(true);
       });
+
     })();
 
     return () => { cancelled = true; };
@@ -426,6 +490,74 @@ export default function MapPage() {
               </Box>
             )}
             <Box ref={mapRef} sx={{ width: "100%", height: "100%" }} />
+
+            {/* Building search dropdown */}
+            <Autocomplete
+              options={BUILDINGS}
+              getOptionLabel={(o) => o.name}
+              onChange={(_, val) => {
+                if (val && mapInstanceRef.current) {
+                  mapInstanceRef.current.panTo({ lat: val.lat, lng: val.lng });
+                  mapInstanceRef.current.setZoom(18);
+                }
+              }}
+              renderInput={(params) => (
+                <TextField
+                  {...params}
+                  placeholder="Search buildings..."
+                  size="small"
+                  InputProps={{
+                    ...params.InputProps,
+                    startAdornment: <SearchIcon sx={{ color: "#A84D48", fontSize: 18, mr: 0.5 }} />,
+                  }}
+                  sx={{
+                    "& .MuiOutlinedInput-root": {
+                      background: "rgba(255,255,255,0.95)",
+                      backdropFilter: "blur(8px)",
+                      borderRadius: 2,
+                      fontWeight: 700,
+                      fontSize: 13,
+                      "& fieldset": { borderColor: "#ecdcdc" },
+                      "&:hover fieldset": { borderColor: "#A84D48" },
+                      "&.Mui-focused fieldset": { borderColor: "#A84D48" },
+                    },
+                  }}
+                />
+              )}
+              sx={{ position: "absolute", top: 12, left: 12, width: 250, zIndex: 10 }}
+            />
+
+            {/* Building search dropdown */}
+            <Autocomplete
+              options={BUILDINGS}
+              getOptionLabel={(o) => o.name}
+              onChange={(_, val) => {
+                if (val && mapInstanceRef.current) {
+                  mapInstanceRef.current.panTo({ lat: val.lat, lng: val.lng });
+                  mapInstanceRef.current.setZoom(18);
+                }
+              }}
+              renderInput={(params) => (
+                <TextField
+                  {...params}
+                  placeholder="Search buildings..."
+                  size="small"
+                  sx={{
+                    "& .MuiOutlinedInput-root": {
+                      background: "rgba(255,255,255,0.92)",
+                      backdropFilter: "blur(8px)",
+                      borderRadius: 2,
+                      fontWeight: 700,
+                      fontSize: 13,
+                      "& fieldset": { borderColor: "#ecdcdc" },
+                      "&:hover fieldset": { borderColor: "#A84D48" },
+                      "&.Mui-focused fieldset": { borderColor: "#A84D48" },
+                    },
+                  }}
+                />
+              )}
+              sx={{ position: "absolute", top: 12, left: 12, width: 260, zIndex: 10 }}
+            />
 
             {/* Instruction overlay */}
             {!searchPin && !loading && (
