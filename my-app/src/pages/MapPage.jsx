@@ -1,53 +1,429 @@
-import { useEffect } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import { setOptions, importLibrary } from "@googlemaps/js-api-loader";
-import { Box, Typography, Paper } from '@mui/material';
+import {
+  Box, Typography, Paper, Slider, Chip, IconButton, CircularProgress,
+  Collapse, Button,
+} from "@mui/material";
+import MyLocationIcon from "@mui/icons-material/MyLocation";
+import FilterAltIcon from "@mui/icons-material/FilterAlt";
+import CloseIcon from "@mui/icons-material/Close";
+import ListIcon from "@mui/icons-material/ViewList";
+import { supabase } from "../supabaseClient";
 
+// Configure the shared Google Maps JS API loader
 setOptions({
   key: import.meta.env.VITE_GOOGLE_MAPS_API_KEY,
   v: "weekly",
 });
 
-// --- MapPage: Displays the campus map and map-related UI ---
+// --- Constants ---
+const CAMPUS_CENTER = { lat: 42.3398, lng: -71.0892 };
+const IMPORTANCE_LABELS = { 3: "High", 2: "Medium", 1: "Low" };
+const IMPORTANCE_COLORS = { 3: "#b91c1c", 2: "#a16207", 1: "#1d4ed8" };
+const RADIUS_MARKS = [
+  { value: 0.1, label: "0.1 mi" },
+  { value: 0.25, label: "¼ mi" },
+  { value: 0.5, label: "½ mi" },
+  { value: 1, label: "1 mi" },
+];
+
+/**
+ * Compute distance between two lat/lng points (miles) using Haversine.
+ * Used to decide which listings fall inside the user‑selected radius.
+ */
+function haversine(a, b) {
+  const R = 3958.8;
+  const dLat = ((b.lat - a.lat) * Math.PI) / 180;
+  const dLng = ((b.lng - a.lng) * Math.PI) / 180;
+  const sinLat = Math.sin(dLat / 2);
+  const sinLng = Math.sin(dLng / 2);
+  const h =
+    sinLat * sinLat +
+    Math.cos((a.lat * Math.PI) / 180) *
+      Math.cos((b.lat * Math.PI) / 180) *
+      sinLng * sinLng;
+  return 2 * R * Math.asin(Math.sqrt(h));
+}
+
+function formatDate(d) {
+  const diff = Math.floor((new Date() - new Date(d)) / 86400000);
+  if (diff === 0) return "Today";
+  if (diff === 1) return "Yesterday";
+  return `${diff}d ago`;
+}
+
+// --- MapPage --- shows all listings on a campus map + nearby‑search UI
 export default function MapPage() {
+  // Map DOM node + long‑lived Google Maps objects
+  const mapRef = useRef(null);
+  const mapInstanceRef = useRef(null);
+  const searchPinRef = useRef(null);
+  const circleRef = useRef(null);
+  const markersRef = useRef([]);
+  const infoWindowRef = useRef(null);
+
+  // Listing data and UI state for the "nearby" search
+  const [items, setItems] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [searchPin, setSearchPin] = useState(null);        // { lat, lng }
+  const [radius, setRadius] = useState(0.25);               // miles
+  const [nearbyItems, setNearbyItems] = useState([]);
+  const [showPanel, setShowPanel] = useState(false);
+
+  // ---- Fetch all listings with coordinates from Supabase ----
   useEffect(() => {
-    importLibrary("maps").then(({ Map }) => {
-      new Map(document.getElementById("map"), {
-        center: { lat: 42.3398, lng: -71.0892 },
-        zoom: 15,
-      });
-    });
+    (async () => {
+      setLoading(true);
+      const { data, error } = await supabase
+        .from("listings")
+        .select("*, locations(name, coordinates)")
+        .order("date", { ascending: false });
+
+      if (!error && data) {
+        // Normalise each listing: prefer item-level lat/lng, else fall back
+        const normalized = data.map((item) => {
+          let lat = item.lat;
+          let lng = item.lng;
+          if (lat == null && item.locations?.coordinates) {
+            // coordinates stored as { lat, lng } or [lng, lat] (PostGIS)
+            const c = item.locations.coordinates;
+            if (typeof c === "object" && !Array.isArray(c)) {
+              lat = c.lat;
+              lng = c.lng;
+            }
+          }
+          return { ...item, _lat: lat, _lng: lng };
+        });
+        setItems(normalized);
+      }
+      setLoading(false);
+    })();
   }, []);
 
+  // ---- Initialize Google Map once, wiring up click‑to‑drop search pin ----
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const { Map } = await importLibrary("maps");
+      await importLibrary("marker");
+      if (cancelled || !mapRef.current) return;
+
+      const map = new Map(mapRef.current, {
+        center: CAMPUS_CENTER,
+        zoom: 15,
+        disableDefaultUI: true,
+        zoomControl: true,
+        gestureHandling: "greedy",
+        mapId: "LOST_HOUND_MAP",
+        clickableIcons: false,
+      });
+
+      mapInstanceRef.current = map;
+
+      // When user clicks anywhere on the map, drop a red search pin
+      map.addListener("click", (e) => {
+        const pos = { lat: e.latLng.lat(), lng: e.latLng.lng() };
+        setSearchPin(pos);
+        setShowPanel(true);
+      });
+    })();
+
+    return () => { cancelled = true; };
+  }, []);
+
+  // ---- Place / move the search pin + matching radius circle ----
+  useEffect(() => {
+    if (!mapInstanceRef.current) return;
+    const map = mapInstanceRef.current;
+
+    (async () => {
+      const { AdvancedMarkerElement } = await importLibrary("marker");
+
+      // If pin has been cleared, remove marker + circle from map
+      if (!searchPin) {
+        if (searchPinRef.current) { searchPinRef.current.map = null; searchPinRef.current = null; }
+        if (circleRef.current) { circleRef.current.setMap(null); circleRef.current = null; }
+        return;
+      }
+
+      // Search pin marker (red, draggable)
+      if (searchPinRef.current) {
+        searchPinRef.current.position = searchPin;
+      } else {
+        const pinEl = document.createElement("div");
+        pinEl.innerHTML = `<svg width="32" height="42" viewBox="0 0 32 42" fill="none"><path d="M16 0C7.16 0 0 7.16 0 16c0 12 16 26 16 26s16-14 16-26C32 7.16 24.84 0 16 0z" fill="#A84D48"/><circle cx="16" cy="16" r="7" fill="#fff"/></svg>`;
+        const marker = new AdvancedMarkerElement({
+          map,
+          position: searchPin,
+          gmpDraggable: true,
+          content: pinEl,
+          zIndex: 999,
+        });
+        marker.addListener("dragend", () => {
+          const p = marker.position;
+          setSearchPin({ lat: p.lat, lng: p.lng });
+        });
+        searchPinRef.current = marker;
+      }
+
+      // Radius circle visualising the current search distance around the pin
+      const radiusMeters = radius * 1609.34;
+      if (circleRef.current) {
+        circleRef.current.setCenter(searchPin);
+        circleRef.current.setRadius(radiusMeters);
+      } else {
+        const { Circle } = await importLibrary("maps");
+
+        // google.maps.Circle may already be available via the maps library
+        const circle = new google.maps.Circle({
+          map,
+          center: searchPin,
+          radius: radiusMeters,
+          fillColor: "#A84D48",
+          fillOpacity: 0.10,
+          strokeColor: "#A84D48",
+          strokeOpacity: 0.45,
+          strokeWeight: 2,
+        });
+        circleRef.current = circle;
+      }
+    })();
+  }, [searchPin, radius]);
+
+  // ---- Render item markers for every listing with coordinates ----
+  useEffect(() => {
+    if (!mapInstanceRef.current) return;
+    const map = mapInstanceRef.current;
+
+    (async () => {
+      const { AdvancedMarkerElement } = await importLibrary("marker");
+
+      // Clear old markers before re‑drawing
+      markersRef.current.forEach((m) => (m.map = null));
+      markersRef.current = [];
+
+      const mappable = items.filter((i) => i._lat != null && i._lng != null);
+
+      mappable.forEach((item) => {
+        // Dim markers that fall outside the current radius when searching
+        const isNearby = !searchPin || nearbyItems.some((n) => n.item_id === item.item_id);
+        const color = item.resolved ? "#94a3b8" : (IMPORTANCE_COLORS[item.importance] || "#666");
+        const opacity = searchPin && !isNearby ? 0.25 : 1;
+
+        const el = document.createElement("div");
+        el.style.opacity = opacity;
+        el.style.transition = "opacity 0.3s";
+        el.innerHTML = `<svg width="24" height="32" viewBox="0 0 24 32" fill="none"><path d="M12 0C5.37 0 0 5.37 0 12c0 9 12 20 12 20s12-11 12-20C24 5.37 18.63 0 12 0z" fill="${color}"/><circle cx="12" cy="12" r="5" fill="#fff" opacity="0.9"/></svg>`;
+
+        const marker = new AdvancedMarkerElement({
+          map,
+          position: { lat: item._lat, lng: item._lng },
+          content: el,
+        });
+
+        // Rich info window on marker click (thumbnail + metadata)
+        marker.addListener("click", () => {
+          if (infoWindowRef.current) infoWindowRef.current.close();
+          const iw = new google.maps.InfoWindow({
+            content: `
+              <div style="max-width:240px;font-family:system-ui,sans-serif;">
+                ${item.image_url ? `<img src="${item.image_url}" style="width:100%;height:100px;object-fit:cover;border-radius:6px;margin-bottom:8px;" />` : ""}
+                <div style="font-weight:800;font-size:14px;margin-bottom:2px;">${item.title}</div>
+                <div style="color:#888;font-size:12px;margin-bottom:4px;">${item.locations?.name ?? "Unknown"} · ${formatDate(item.date)}</div>
+                <span style="display:inline-block;padding:2px 8px;border-radius:99px;font-size:11px;font-weight:700;background:${color}22;color:${color};border:1px solid ${color}44;">${IMPORTANCE_LABELS[item.importance]}</span>
+                ${item.resolved ? ' <span style="display:inline-block;padding:2px 8px;border-radius:99px;font-size:11px;font-weight:700;background:#dcfce7;color:#16a34a;">Resolved</span>' : ""}
+                <div style="color:#666;font-size:12px;margin-top:6px;line-height:1.4;">${(item.description || "").slice(0, 120)}${(item.description || "").length > 120 ? "…" : ""}</div>
+              </div>
+            `,
+          });
+          iw.open({ anchor: marker, map });
+          infoWindowRef.current = iw;
+        });
+
+        markersRef.current.push(marker);
+      });
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [items, searchPin, nearbyItems]);
+
+  // ---- Recompute list of nearby items whenever pin or radius changes ----
+  useEffect(() => {
+    if (!searchPin) {
+      setNearbyItems([]);
+      return;
+    }
+    const nearby = items.filter((i) => {
+      if (i._lat == null || i._lng == null) return false;
+      return haversine(searchPin, { lat: i._lat, lng: i._lng }) <= radius;
+    });
+    setNearbyItems(nearby);
+  }, [searchPin, radius, items]);
+
+  // ---- Clear search pin and collapse side panel ----
+  const clearSearch = () => {
+    setSearchPin(null);
+    setShowPanel(false);
+    setNearbyItems([]);
+  };
+
   return (
-    <Box
-      sx={{
-        display: 'flex',
-        justifyContent: 'center',
-        width: '100%',
-        p: 3,
-      }}
-    >
-      <Box sx={{ width: '100%', maxWidth: '1200px' }}>
-        <Paper elevation={3} sx={{ p: 3, mb: 2, textAlign: 'center' }}>
-          <Typography variant="h4" gutterBottom>
+    <Box sx={{ display: "flex", justifyContent: "center", width: "100%", p: 3 }}>
+      <Box sx={{ width: "100%", maxWidth: 1200 }}>
+        {/* Header */}
+        <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 2 }}>
+          <Typography variant="h4" fontWeight={900}>
             Campus Map
           </Typography>
-          <Typography variant="body1">
-            Use the map to report lost/found items.
-          </Typography>
-        </Paper>
+          {searchPin && (
+            <Button
+              size="small"
+              onClick={clearSearch}
+              startIcon={<CloseIcon />}
+              sx={{ color: "#A84D48", fontWeight: 700 }}
+            >
+              Clear Pin
+            </Button>
+          )}
+        </Box>
 
-        <Paper
-          elevation={3}
-          sx={{
-            height: 'calc(100vh - 300px)',
-            minHeight: '400px',
-            overflow: 'hidden',
-            borderRadius: 2,
-          }}
-        >
-          <Box id="map" sx={{ width: '100%', height: '100%' }} />
-        </Paper>
+        <Box sx={{ display: "flex", gap: 2.5, flexDirection: { xs: "column", md: "row" } }}>
+          {/* Map */}
+          <Paper
+            elevation={3}
+            sx={{
+              flex: 1,
+              height: { xs: "50vh", md: "calc(100vh - 200px)" },
+              minHeight: 400,
+              overflow: "hidden",
+              borderRadius: 3,
+              position: "relative",
+            }}
+          >
+            {loading && (
+              <Box sx={{ position: "absolute", top: "50%", left: "50%", transform: "translate(-50%,-50%)", zIndex: 10 }}>
+                <CircularProgress sx={{ color: "#A84D48" }} />
+              </Box>
+            )}
+            <Box ref={mapRef} sx={{ width: "100%", height: "100%" }} />
+
+            {/* Instruction overlay */}
+            {!searchPin && !loading && (
+              <Paper
+                elevation={0}
+                sx={{
+                  position: "absolute", bottom: 16, left: "50%", transform: "translateX(-50%)",
+                  display: "flex", alignItems: "center", gap: 1,
+                  px: 2.5, py: 1.25, borderRadius: 99,
+                  background: "rgba(255,255,255,0.92)", backdropFilter: "blur(8px)",
+                  border: "1.5px solid #ecdcdc",
+                }}
+              >
+                <MyLocationIcon sx={{ color: "#A84D48", fontSize: 18 }} />
+                <Typography variant="body2" fontWeight={700} color="text.secondary">
+                  Tap the map to search for nearby lost items
+                </Typography>
+              </Paper>
+            )}
+          </Paper>
+
+          {/* Side panel — radius controls + nearby list */}
+          <Collapse in={showPanel && !!searchPin} orientation="horizontal" sx={{ minWidth: showPanel ? 320 : 0 }}>
+            <Paper
+              elevation={2}
+              sx={{
+                width: 320, p: 2.5, borderRadius: 3,
+                height: { xs: "auto", md: "calc(100vh - 200px)" },
+                overflowY: "auto",
+                border: "1.5px solid #ecdcdc",
+              }}
+            >
+              {/* Radius slider */}
+              <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 1 }}>
+                <FilterAltIcon sx={{ color: "#A84D48", fontSize: 20 }} />
+                <Typography fontWeight={800} fontSize={15}>
+                  Search Radius
+                </Typography>
+              </Box>
+              <Slider
+                value={radius}
+                min={0.05}
+                max={1}
+                step={0.05}
+                onChange={(_, v) => setRadius(v)}
+                valueLabelDisplay="auto"
+                valueLabelFormat={(v) => `${v} mi`}
+                marks={RADIUS_MARKS}
+                sx={{ color: "#A84D48", mb: 2 }}
+              />
+
+              {/* Nearby items */}
+              <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 1.5 }}>
+                <ListIcon sx={{ color: "#a07070", fontSize: 18 }} />
+                <Typography variant="body2" fontWeight={800} color="text.secondary">
+                  {nearbyItems.length} item{nearbyItems.length !== 1 ? "s" : ""} within {radius} mi
+                </Typography>
+              </Box>
+
+              {nearbyItems.length === 0 ? (
+                <Typography variant="body2" color="text.disabled" fontWeight={600} sx={{ textAlign: "center", mt: 4 }}>
+                  No lost items in this area. Try a larger radius.
+                </Typography>
+              ) : (
+                <Box sx={{ display: "flex", flexDirection: "column", gap: 1 }}>
+                  {nearbyItems.map((item) => (
+                    <Paper
+                      key={item.item_id}
+                      variant="outlined"
+                      sx={{
+                        p: 1.5, borderRadius: 2, borderColor: "#ecdcdc",
+                        cursor: "pointer", transition: "box-shadow 0.15s",
+                        opacity: item.resolved ? 0.6 : 1,
+                        "&:hover": { boxShadow: "0 2px 12px rgba(168,77,72,0.12)" },
+                      }}
+                      onClick={() => {
+                        // Pan map to item
+                        if (mapInstanceRef.current && item._lat && item._lng) {
+                          mapInstanceRef.current.panTo({ lat: item._lat, lng: item._lng });
+                          mapInstanceRef.current.setZoom(17);
+                        }
+                      }}
+                    >
+                      <Box sx={{ display: "flex", gap: 1.5, alignItems: "center" }}>
+                        {/* Thumbnail */}
+                        <Box sx={{
+                          width: 44, height: 44, borderRadius: 1.5, flexShrink: 0,
+                          overflow: "hidden", background: "#f0eded",
+                          display: "flex", alignItems: "center", justifyContent: "center",
+                          border: "1px solid #e0d6d6",
+                        }}>
+                          {item.image_url
+                            ? <img src={item.image_url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                            : <Typography variant="caption" sx={{ color: "#ccc", fontSize: 18 }}>📦</Typography>
+                          }
+                        </Box>
+                        <Box sx={{ flex: 1, minWidth: 0 }}>
+                          <Typography fontWeight={800} fontSize={13} noWrap>{item.title}</Typography>
+                          <Typography variant="caption" color="text.secondary" fontWeight={600} noWrap>
+                            {item.locations?.name ?? "Unknown"} · {formatDate(item.date)}
+                          </Typography>
+                        </Box>
+                        <Chip
+                          label={IMPORTANCE_LABELS[item.importance]}
+                          size="small"
+                          sx={{
+                            background: IMPORTANCE_COLORS[item.importance] + "22",
+                            color: IMPORTANCE_COLORS[item.importance],
+                            fontWeight: 800, fontSize: 10, flexShrink: 0,
+                          }}
+                        />
+                      </Box>
+                    </Paper>
+                  ))}
+                </Box>
+              )}
+            </Paper>
+          </Collapse>
+        </Box>
       </Box>
     </Box>
   );

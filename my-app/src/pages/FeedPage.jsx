@@ -2,14 +2,17 @@ import { useState, useEffect, useRef } from "react";
 import {
   Box, Typography, Paper, TextField, Button, Select, MenuItem,
   FormControl, InputLabel, Chip, CircularProgress, Modal, Slider,
-  IconButton, InputAdornment,
+  IconButton, InputAdornment, Collapse,
 } from "@mui/material";
 import SearchIcon from "@mui/icons-material/Search";
 import AddIcon from "@mui/icons-material/Add";
 import CloseIcon from "@mui/icons-material/Close";
 import UploadIcon from "@mui/icons-material/UploadFile";
+import MapIcon from "@mui/icons-material/PinDrop";
 import { supabase } from "../supabaseClient";
 import { useAuth } from "../AuthContext";
+// Reusable click‑to‑drop map pin component
+import MapPinPicker from "../components/Mappinpicker";
 
 // --- Constants ---
 const CATEGORIES = ["All", "Husky Card", "Jacket", "Wallet/Purse", "Bag", "Keys", "Electronics", "Other"];
@@ -26,7 +29,7 @@ function formatDate(d) {
   return `${diff} days ago`;
 }
 
-// --- ImageUpload: Handles optional photo upload in the report form ---
+// --- ImageUpload ---
 function ImageUpload({ image, onChange }) {
   const inputRef = useRef();
   const handleFile = (e) => {
@@ -70,7 +73,7 @@ function ImageUpload({ image, onChange }) {
   );
 }
 
-// --- ItemCard: A single listing card in the feed ---
+// --- ItemCard ---
 function ItemCard({ item, onClick }) {
   return (
     <Paper
@@ -84,7 +87,6 @@ function ItemCard({ item, onClick }) {
         "&:hover": { boxShadow: "0 4px 18px rgba(168,77,72,0.13)", transform: "translateY(-2px)" },
       }}
     >
-      {/* Thumbnail */}
       <Box sx={{
         width: 72, height: 72, borderRadius: 2, flexShrink: 0, overflow: "hidden",
         background: "#f0eded", border: "1.5px solid #e0d6d6",
@@ -95,8 +97,6 @@ function ItemCard({ item, onClick }) {
           : <UploadIcon sx={{ color: "#c4a8a7", fontSize: 28 }} />
         }
       </Box>
-
-      {/* Content */}
       <Box sx={{ flex: 1, minWidth: 0 }}>
         <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 1 }}>
           <Box>
@@ -128,7 +128,7 @@ function ItemCard({ item, onClick }) {
   );
 }
 
-// --- DetailModal: Full listing detail view ---
+// --- DetailModal ---
 function DetailModal({ item, onClose, onClaim }) {
   const [claimed, setClaimed] = useState(false);
   if (!item) return null;
@@ -149,7 +149,7 @@ function DetailModal({ item, onClose, onClaim }) {
           <IconButton onClick={onClose} size="small"><CloseIcon /></IconButton>
         </Box>
 
-        {/* Photo */}
+        {/* Main listing photo, or a placeholder if missing */}
         {item.image_url
           ? <Box component="img" src={item.image_url} alt={item.title} sx={{ width: "100%", height: 200, objectFit: "cover", borderRadius: 2, mb: 2, border: "1.5px solid #ecdcdc" }} />
           : <Box sx={{ width: "100%", height: 120, background: "#f5f0f0", borderRadius: 2, mb: 2, display: "flex", alignItems: "center", justifyContent: "center", border: "1.5px dashed #dac8c8" }}>
@@ -157,31 +157,45 @@ function DetailModal({ item, onClose, onClaim }) {
             </Box>
         }
 
-        {/* Badges */}
+        {/* Importance / category / resolved badges */}
         <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap", mb: 2 }}>
           <Chip label={IMPORTANCE_LABELS[item.importance]} size="small" sx={{ background: IMPORTANCE_COLORS[item.importance] + "22", color: IMPORTANCE_COLORS[item.importance], fontWeight: 800 }} />
           <Chip label={item.category} size="small" sx={{ background: "#f5eded", color: "#A84D48", fontWeight: 700 }} />
           {item.resolved && <Chip label="Resolved" size="small" sx={{ background: "#dcfce7", color: "#16a34a", fontWeight: 800 }} />}
         </Box>
 
-        {/* Location */}
+        {/* Location section — shows building text and mini map (if pinned) */}
         <Paper variant="outlined" sx={{ p: 2, mb: 2, background: "#fdf7f7", borderColor: "#ecdcdc", borderRadius: 2 }}>
           <Typography variant="caption" fontWeight={800} color="#a07070" sx={{ letterSpacing: 0.5, display: "block", mb: 0.75 }}>LOCATION</Typography>
           <Typography fontWeight={700} fontSize={14}>{item.locations?.name ?? "Unknown location"}</Typography>
           <Typography variant="caption" color="text.secondary" fontWeight={600}>Found at: {item.found_at}</Typography>
-          {/* TODO: Embed map pin using item.locations.coordinates or item.coordinates */}
-          <Box sx={{ mt: 1.5, background: "#ede8e8", borderRadius: 1.5, height: 100, display: "flex", alignItems: "center", justifyContent: "center" }}>
-            <Typography variant="caption" color="text.disabled" fontWeight={700}>Map view coming soon</Typography>
-          </Box>
+
+          {/* Show read‑only mini map when the listing has lat/lng */}
+          {(item.lat && item.lng) ? (
+            <Box sx={{ mt: 1.5 }}>
+              <MapPinPicker
+                value={{ lat: item.lat, lng: item.lng }}
+                height={120}
+                interactive={false}
+                showCoords={false}
+                zoom={17}
+                center={{ lat: item.lat, lng: item.lng }}
+              />
+            </Box>
+          ) : (
+            <Box sx={{ mt: 1.5, background: "#ede8e8", borderRadius: 1.5, height: 80, display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <Typography variant="caption" color="text.disabled" fontWeight={700}>No exact location pinned</Typography>
+            </Box>
+          )}
         </Paper>
 
-        {/* Description */}
+        {/* Long‑form description of the item */}
         <Box sx={{ mb: 3 }}>
           <Typography variant="caption" fontWeight={800} color="#a07070" sx={{ letterSpacing: 0.5, display: "block", mb: 0.75 }}>DESCRIPTION</Typography>
           <Typography variant="body2" color="text.secondary" lineHeight={1.65}>{item.description}</Typography>
         </Box>
 
-        {/* Actions */}
+        {/* Claim + future messaging actions */}
         <Box sx={{ display: "flex", gap: 1.5 }}>
           <Button
             variant="contained"
@@ -195,7 +209,6 @@ function DetailModal({ item, onClose, onClaim }) {
           >
             {item.resolved ? "Already Resolved" : claimed ? "Marked as Found!" : "This is Mine!"}
           </Button>
-          {/* TODO: Wire to chat/messaging system */}
           <Button variant="outlined" sx={{ borderColor: "#ecdcdc", color: "#A84D48", fontWeight: 800, borderRadius: 2, flexShrink: 0 }}>
             Message
           </Button>
@@ -205,16 +218,22 @@ function DetailModal({ item, onClose, onClaim }) {
   );
 }
 
-// --- NewItemModal: Form to report a newly found item ---
+// --- NewItemModal: Updated with optional map pin picker ---
 function NewItemModal({ open, onClose, onAdd }) {
   const { user, profile } = useAuth();
   const [locations, setLocations] = useState([]);
-  const [form, setForm] = useState({ title: "", category: "Other", location_id: "", found_at: "", importance: 2, description: "", image: null });
+  const [form, setForm] = useState({
+    title: "", category: "Other", location_id: "", found_at: "",
+    importance: 2, description: "", image: null, pin: null,
+  });
   const [submitting, setSubmitting] = useState(false);
+  const [showMap, setShowMap] = useState(false);
+  // Helper to update one field in the form state
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
+  // Basic required‑field validation for the submit button
   const valid = form.title.trim() && form.found_at.trim() && form.description.trim() && form.location_id;
 
-  // Fetch locations for dropdown
+  // Load list of campus buildings for the dropdown when modal opens
   useEffect(() => {
     if (!open) return;
     supabase.from("locations").select("location_id, name").then(({ data }) => {
@@ -228,7 +247,7 @@ function NewItemModal({ open, onClose, onAdd }) {
 
     let image_url = null;
 
-    // Upload image to Supabase Storage bucket "listing-images" if provided
+    // If the user attached a photo, upload it to Supabase Storage
     if (form.image?.file) {
       const ext = form.image.file.name.split(".").pop();
       const path = `${user.id}/${Date.now()}.${ext}`;
@@ -245,21 +264,29 @@ function NewItemModal({ open, onClose, onAdd }) {
       ? `${profile.first_name} ${profile.last_name}`
       : user.email;
 
+    const insertData = {
+      title: form.title,
+      category: form.category,
+      location_id: form.location_id,
+      found_at: form.found_at,
+      importance: form.importance,
+      description: form.description,
+      image_url,
+      resolved: false,
+      poster_id: user.id,
+      poster_name: posterName,
+      date: new Date().toISOString(),
+    };
+
+    // If a pin was dropped, persist its coordinates on the listing
+    if (form.pin) {
+      insertData.lat = form.pin.lat;
+      insertData.lng = form.pin.lng;
+    }
+
     const { data, error } = await supabase
       .from("listings")
-      .insert([{
-        title: form.title,
-        category: form.category,
-        location_id: form.location_id,
-        found_at: form.found_at,
-        importance: form.importance,
-        description: form.description,
-        image_url,
-        resolved: false,
-        poster_id: user.id,
-        poster_name: posterName,
-        date: new Date().toISOString(),
-      }])
+      .insert([insertData])
       .select(`*, locations(name, coordinates)`)
       .single();
 
@@ -267,7 +294,8 @@ function NewItemModal({ open, onClose, onAdd }) {
     if (!error && data) {
       onAdd(data);
       onClose();
-      setForm({ title: "", category: "Other", location_id: "", found_at: "", importance: 2, description: "", image: null });
+      setForm({ title: "", category: "Other", location_id: "", found_at: "", importance: 2, description: "", image: null, pin: null });
+      setShowMap(false);
     }
   };
 
@@ -275,7 +303,7 @@ function NewItemModal({ open, onClose, onAdd }) {
     <Modal open={open} onClose={onClose}>
       <Box sx={{
         position: "absolute", top: "50%", left: "50%", transform: "translate(-50%, -50%)",
-        background: "#fff", borderRadius: 4, p: "26px", width: "100%", maxWidth: 480,
+        background: "#fff", borderRadius: 4, p: "26px", width: "100%", maxWidth: 520,
         maxHeight: "92vh", overflowY: "auto", outline: "none",
       }}>
         <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 2.5 }}>
@@ -303,6 +331,41 @@ function NewItemModal({ open, onClose, onAdd }) {
         <TextField label="Found At (specific spot)" value={form.found_at} onChange={e => set("found_at", e.target.value)} placeholder="e.g. Table near window, Room 204" fullWidth sx={{ mb: 2 }} />
         <TextField label="Description" value={form.description} onChange={e => set("description", e.target.value)} placeholder="Color, markings, contents..." multiline rows={3} fullWidth sx={{ mb: 2 }} />
 
+        {/* --- Optional map pin so reporters can mark the exact spot --- */}
+        <Box sx={{ mb: 2 }}>
+          <Button
+            size="small"
+            startIcon={<MapIcon />}
+            onClick={() => setShowMap(!showMap)}
+            sx={{
+              color: form.pin ? "#16a34a" : "#A84D48",
+              fontWeight: 700, mb: 0.75,
+              background: form.pin ? "#dcfce722" : "transparent",
+            }}
+          >
+            {form.pin ? "📍 Pin placed — tap to edit" : "Drop a pin on the map (optional)"}
+          </Button>
+
+          {/* Inline map picker that lets the user drop / edit a pin */}
+          <Collapse in={showMap}>
+            <MapPinPicker
+              value={form.pin}
+              onChange={(latLng) => set("pin", latLng)}
+              height={180}
+            />
+            {form.pin && (
+              <Button
+                size="small"
+                onClick={() => set("pin", null)}
+                sx={{ mt: 0.5, color: "#A84D48", fontSize: 12 }}
+              >
+                Remove pin
+              </Button>
+            )}
+          </Collapse>
+        </Box>
+
+        {/* Importance */}
         <Box sx={{ mb: 2.5 }}>
           <Typography variant="caption" fontWeight={800} color="text.secondary" sx={{ display: "block", mb: 1 }}>
             Importance: <span style={{ color: IMPORTANCE_COLORS[form.importance], fontWeight: 900 }}>{IMPORTANCE_LABELS[form.importance]}</span>
@@ -330,7 +393,7 @@ function NewItemModal({ open, onClose, onAdd }) {
   );
 }
 
-// --- FeedPage: Main feed view ---
+// --- FeedPage ---
 export default function FeedPage() {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -340,7 +403,6 @@ export default function FeedPage() {
   const [selected, setSelected] = useState(null);
   const [showNew, setShowNew] = useState(false);
 
-  // Fetch listings joined with location name from Supabase on mount
   useEffect(() => {
     const fetchItems = async () => {
       setLoading(true);
@@ -354,7 +416,6 @@ export default function FeedPage() {
     fetchItems();
   }, []);
 
-  // Mark a listing as resolved
   const handleClaim = async (item_id) => {
     await supabase.from("listings").update({ resolved: true }).eq("item_id", item_id);
     setItems(prev => prev.map(i => i.item_id === item_id ? { ...i, resolved: true } : i));
@@ -378,8 +439,6 @@ export default function FeedPage() {
   return (
     <Box sx={{ display: "flex", justifyContent: "center", width: "100%", p: 3 }}>
       <Box sx={{ width: "100%", maxWidth: 680 }}>
-
-        {/* Page header */}
         <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 2.5 }}>
           <Typography variant="h4" fontWeight={900}>Lost & Found Feed</Typography>
           <Button
@@ -390,14 +449,12 @@ export default function FeedPage() {
           </Button>
         </Box>
 
-        {/* Search */}
         <TextField
           fullWidth placeholder="Search items, locations, descriptions..."
           value={search} onChange={e => setSearch(e.target.value)} sx={{ mb: 2 }}
           InputProps={{ startAdornment: <InputAdornment position="start"><SearchIcon sx={{ color: "#a07070" }} /></InputAdornment> }}
         />
 
-        {/* Category chips */}
         <Box sx={{ display: "flex", gap: 1, overflowX: "auto", pb: 1, mb: 1.5 }}>
           {CATEGORIES.map(c => (
             <Chip key={c} label={c} clickable onClick={() => setCategory(c)} sx={{
@@ -410,7 +467,6 @@ export default function FeedPage() {
           ))}
         </Box>
 
-        {/* Sort + count */}
         <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 2 }}>
           <Typography variant="body2" color="text.secondary" fontWeight={700}>
             {filtered.length} item{filtered.length !== 1 ? "s" : ""}
@@ -423,7 +479,6 @@ export default function FeedPage() {
           </FormControl>
         </Box>
 
-        {/* Feed */}
         {loading
           ? <Box sx={{ display: "flex", justifyContent: "center", mt: 6 }}><CircularProgress sx={{ color: "#A84D48" }} /></Box>
           : filtered.length === 0
