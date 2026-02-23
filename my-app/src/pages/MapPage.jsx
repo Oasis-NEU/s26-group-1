@@ -20,10 +20,10 @@ const CAMPUS_CENTER = { lat: 42.3398, lng: -71.0892 };
 const IMPORTANCE_LABELS = { 3: "High", 2: "Medium", 1: "Low" };
 const IMPORTANCE_COLORS = { 3: "#b91c1c", 2: "#a16207", 1: "#1d4ed8" };
 const RADIUS_MARKS = [
-  { value: 0.1, label: "0.1 mi" },
-  { value: 0.25, label: "¼ mi" },
-  { value: 0.5, label: "½ mi" },
-  { value: 1, label: "1 mi" },
+  { value: 50, label: "50ft" },
+  { value: 150, label: "150ft" },
+  { value: 300, label: "300ft" },
+  { value: 500, label: "500ft" },
 ];
 
 /**
@@ -46,9 +46,9 @@ function parseCoordinates(coordStr) {
   return { lat, lng };
 }
 
-/** Haversine distance in miles */
+/** Haversine distance in feet */
 function haversine(a, b) {
-  const R = 3958.8;
+  const R = 20902231; // Earth radius in feet
   const dLat = ((b.lat - a.lat) * Math.PI) / 180;
   const dLng = ((b.lng - a.lng) * Math.PI) / 180;
   const sinLat = Math.sin(dLat / 2);
@@ -80,7 +80,7 @@ export default function MapPage() {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchPin, setSearchPin] = useState(null);        // { lat, lng }
-  const [radius, setRadius] = useState(0.25);               // miles
+  const [radius, setRadius] = useState(150);               // feet
   const [nearbyItems, setNearbyItems] = useState([]);
   const [showPanel, setShowPanel] = useState(false);
 
@@ -176,7 +176,7 @@ export default function MapPage() {
       }
 
       // Radius circle
-      const radiusMeters = radius * 1609.34;
+      const radiusMeters = radius * 0.3048; // feet to meters
       if (circleRef.current) {
         circleRef.current.setCenter(searchPin);
         circleRef.current.setRadius(radiusMeters);
@@ -199,27 +199,27 @@ export default function MapPage() {
     })();
   }, [searchPin, radius]);
 
-  // ---- Render item markers ----
+  // ---- Render item markers (only after search pin is placed) ----
   useEffect(() => {
     if (!mapInstanceRef.current) return;
     const map = mapInstanceRef.current;
 
+    // Clear old markers
+    markersRef.current.forEach((m) => (m.map = null));
+    markersRef.current = [];
+
+    // Don't show any item markers until the user places a search pin
+    if (!searchPin) return;
+
     (async () => {
       const { AdvancedMarkerElement } = await importLibrary("marker");
 
-      // Clear old markers
-      markersRef.current.forEach((m) => (m.map = null));
-      markersRef.current = [];
-
-      const mappable = items.filter((i) => i._lat != null && i._lng != null);
-
-      mappable.forEach((item) => {
-        const isNearby = !searchPin || nearbyItems.some((n) => n.item_id === item.item_id);
+      // Only show items that are within the radius
+      nearbyItems.forEach((item) => {
+        if (item._lat == null || item._lng == null) return;
         const color = item.resolved ? "#94a3b8" : (IMPORTANCE_COLORS[item.importance] || "#666");
-        const opacity = searchPin && !isNearby ? 0.25 : 1;
 
         const el = document.createElement("div");
-        el.style.opacity = opacity;
         el.style.transition = "opacity 0.3s";
         el.innerHTML = `<svg width="24" height="32" viewBox="0 0 24 32" fill="none"><path d="M12 0C5.37 0 0 5.37 0 12c0 9 12 20 12 20s12-11 12-20C24 5.37 18.63 0 12 0z" fill="${color}"/><circle cx="12" cy="12" r="5" fill="#fff" opacity="0.9"/></svg>`;
 
@@ -252,7 +252,7 @@ export default function MapPage() {
       });
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [items, searchPin, nearbyItems]);
+  }, [searchPin, nearbyItems]);
 
   // ---- Filter nearby items when pin or radius changes ----
   useEffect(() => {
@@ -354,12 +354,12 @@ export default function MapPage() {
               </Box>
               <Slider
                 value={radius}
-                min={0.05}
-                max={1}
-                step={0.05}
+                min={25}
+                max={500}
+                step={25}
                 onChange={(_, v) => setRadius(v)}
                 valueLabelDisplay="auto"
-                valueLabelFormat={(v) => `${v} mi`}
+                valueLabelFormat={(v) => `${v} ft`}
                 marks={RADIUS_MARKS}
                 sx={{ color: "#A84D48", mb: 2 }}
               />
@@ -368,7 +368,7 @@ export default function MapPage() {
               <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 1.5 }}>
                 <ListIcon sx={{ color: "#a07070", fontSize: 18 }} />
                 <Typography variant="body2" fontWeight={800} color="text.secondary">
-                  {nearbyItems.length} item{nearbyItems.length !== 1 ? "s" : ""} within {radius} mi
+                  {nearbyItems.length} item{nearbyItems.length !== 1 ? "s" : ""} within {radius} ft
                 </Typography>
               </Box>
 

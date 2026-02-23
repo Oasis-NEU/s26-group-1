@@ -259,7 +259,7 @@ function NewItemModal({ open, onClose, onAdd }) {
 
   useEffect(() => {
     if (!open) return;
-    supabase.from("locations").select("location_id, name, coordinates").order("name", { ascending: true }).then(({ data }) => {
+    supabase.from("locations").select("location_id, name, coordinates").then(({ data }) => {
       if (data) setLocations(data);
     });
   }, [open]);
@@ -481,12 +481,31 @@ export default function FeedPage() {
       <Box sx={{ width: "100%", maxWidth: 680 }}>
         <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 2.5 }}>
           <Typography variant="h4" fontWeight={900}>Lost & Found Feed</Typography>
-          <Button
-            variant="contained" startIcon={<AddIcon />} onClick={() => setShowNew(true)}
-            sx={{ background: "#A84D48", "&:hover": { background: "#8f3e3a" }, fontWeight: 900, borderRadius: 2 }}
-          >
-            Report Item
-          </Button>
+          <Box sx={{ display: "flex", gap: 1 }}>
+            <Button
+              variant="outlined"
+              onClick={() => {
+                setLoading(true);
+                supabase
+                  .from("listings")
+                  .select(`*, locations(name, coordinates)`)
+                  .order("date", { ascending: false })
+                  .then(({ data, error }) => {
+                    if (!error) setItems(data ?? []);
+                    setLoading(false);
+                  });
+              }}
+              sx={{ borderColor: "#ecdcdc", color: "#A84D48", fontWeight: 800, borderRadius: 2, minWidth: 0, px: 1.5 }}
+            >
+              ↻
+            </Button>
+            <Button
+              variant="contained" startIcon={<AddIcon />} onClick={() => setShowNew(true)}
+              sx={{ background: "#A84D48", "&:hover": { background: "#8f3e3a" }, fontWeight: 900, borderRadius: 2 }}
+            >
+              Report Item
+            </Button>
+          </Box>
         </Box>
 
         <TextField
