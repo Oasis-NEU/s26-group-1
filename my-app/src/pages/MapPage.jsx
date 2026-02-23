@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, useCallback } from "react";
 import { setOptions, importLibrary } from "@googlemaps/js-api-loader";
 import {
   Box, Typography, Paper, Slider, Chip, IconButton, CircularProgress,
-  Collapse, Button,
+  Collapse, Button, Modal,
 } from "@mui/material";
 import MyLocationIcon from "@mui/icons-material/MyLocation";
 import FilterAltIcon from "@mui/icons-material/FilterAlt";
@@ -68,6 +68,73 @@ function formatDate(d) {
   return `${diff}d ago`;
 }
 
+// --- DetailModal: Full listing detail view (same as FeedPage) ---
+function DetailModal({ item, onClose, onClaim }) {
+  const [claimed, setClaimed] = useState(false);
+  if (!item) return null;
+  return (
+    <Modal open={!!item} onClose={onClose}>
+      <Box sx={{
+        position: "absolute", top: "50%", left: "50%", transform: "translate(-50%, -50%)",
+        background: "#fff", borderRadius: 4, p: "26px", width: "100%", maxWidth: 520,
+        maxHeight: "90vh", overflowY: "auto", outline: "none",
+      }}>
+        <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", mb: 2 }}>
+          <Box>
+            <Typography variant="h6" fontWeight={900}>{item.title}</Typography>
+            <Typography variant="caption" color="text.secondary" fontWeight={600}>
+              Posted by {item.poster_name} · {formatDate(item.date)}
+            </Typography>
+          </Box>
+          <IconButton onClick={onClose} size="small"><CloseIcon /></IconButton>
+        </Box>
+
+        {item.image_url
+          ? <Box component="img" src={item.image_url} alt={item.title} sx={{ width: "100%", height: 200, objectFit: "cover", borderRadius: 2, mb: 2, border: "1.5px solid #ecdcdc" }} />
+          : <Box sx={{ width: "100%", height: 120, background: "#f5f0f0", borderRadius: 2, mb: 2, display: "flex", alignItems: "center", justifyContent: "center", border: "1.5px dashed #dac8c8" }}>
+              <Typography variant="caption" color="text.disabled" fontWeight={700}>No photo provided</Typography>
+            </Box>
+        }
+
+        <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap", mb: 2 }}>
+          <Chip label={IMPORTANCE_LABELS[item.importance]} size="small" sx={{ background: IMPORTANCE_COLORS[item.importance] + "22", color: IMPORTANCE_COLORS[item.importance], fontWeight: 800 }} />
+          <Chip label={item.category} size="small" sx={{ background: "#f5eded", color: "#A84D48", fontWeight: 700 }} />
+          {item.resolved && <Chip label="Resolved" size="small" sx={{ background: "#dcfce7", color: "#16a34a", fontWeight: 800 }} />}
+        </Box>
+
+        <Paper variant="outlined" sx={{ p: 2, mb: 2, background: "#fdf7f7", borderColor: "#ecdcdc", borderRadius: 2 }}>
+          <Typography variant="caption" fontWeight={800} color="#a07070" sx={{ letterSpacing: 0.5, display: "block", mb: 0.75 }}>LOCATION</Typography>
+          <Typography fontWeight={700} fontSize={14}>{item.locations?.name ?? "Unknown location"}</Typography>
+          <Typography variant="caption" color="text.secondary" fontWeight={600}>Found at: {item.found_at}</Typography>
+        </Paper>
+
+        <Box sx={{ mb: 3 }}>
+          <Typography variant="caption" fontWeight={800} color="#a07070" sx={{ letterSpacing: 0.5, display: "block", mb: 0.75 }}>DESCRIPTION</Typography>
+          <Typography variant="body2" color="text.secondary" lineHeight={1.65}>{item.description}</Typography>
+        </Box>
+
+        <Box sx={{ display: "flex", gap: 1.5 }}>
+          <Button
+            variant="contained"
+            fullWidth
+            disabled={item.resolved}
+            onClick={async () => {
+              setClaimed(true);
+              await onClaim(item.item_id);
+            }}
+            sx={{ background: claimed ? "#16a34a" : "#A84D48", "&:hover": { background: claimed ? "#15803d" : "#8f3e3a" }, fontWeight: 800, borderRadius: 2 }}
+          >
+            {item.resolved ? "Already Resolved" : claimed ? "Marked as Found!" : "This is Mine!"}
+          </Button>
+          <Button variant="outlined" sx={{ borderColor: "#ecdcdc", color: "#A84D48", fontWeight: 800, borderRadius: 2, flexShrink: 0 }}>
+            Message
+          </Button>
+        </Box>
+      </Box>
+    </Modal>
+  );
+}
+
 // --- MapPage ---
 export default function MapPage() {
   const mapRef = useRef(null);
@@ -84,6 +151,7 @@ export default function MapPage() {
   const [nearbyItems, setNearbyItems] = useState([]);
   const [showPanel, setShowPanel] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const [selectedItem, setSelectedItem] = useState(null);
 
   // ---- Fetch all listings with coordinates ----
   const fetchItems = useCallback(async () => {
@@ -113,7 +181,20 @@ export default function MapPage() {
   const handleRefresh = async () => {
     setRefreshing(true);
     await fetchItems();
+    // Reset map to campus center
+    if (mapInstanceRef.current) {
+      mapInstanceRef.current.panTo(CAMPUS_CENTER);
+      mapInstanceRef.current.setZoom(17);
+    }
+    clearSearch();
     setTimeout(() => setRefreshing(false), 600);
+  };
+
+  // ---- Claim handler ----
+  const handleClaim = async (item_id) => {
+    await supabase.from("listings").update({ resolved: true }).eq("item_id", item_id);
+    setItems(prev => prev.map(i => i.item_id === item_id ? { ...i, resolved: true } : i));
+    if (selectedItem?.item_id === item_id) setSelectedItem(prev => ({ ...prev, resolved: true }));
   };
 
   // ---- Initialize Google Map ----
@@ -227,6 +308,7 @@ export default function MapPage() {
 
         const el = document.createElement("div");
         el.style.transition = "opacity 0.3s";
+        el.style.cursor = "pointer";
         // Drop-bounce animation staggered by index
         el.style.animation = `markerDrop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) ${index * 0.05}s both`;
         el.innerHTML = `<svg width="24" height="32" viewBox="0 0 24 32" fill="none"><path d="M12 0C5.37 0 0 5.37 0 12c0 9 12 20 12 20s12-11 12-20C24 5.37 18.63 0 12 0z" fill="${color}"/><circle cx="12" cy="12" r="5" fill="#fff" opacity="0.9"/></svg>`;
@@ -252,23 +334,13 @@ export default function MapPage() {
           content: el,
         });
 
-        // Info window on click
+        // Click marker → zoom in and open detail modal
         marker.addListener("click", () => {
-          if (infoWindowRef.current) infoWindowRef.current.close();
-          const iw = new google.maps.InfoWindow({
-            content: `
-              <div style="max-width:240px;font-family:system-ui,sans-serif;">
-                ${item.image_url ? `<img src="${item.image_url}" style="width:100%;height:100px;object-fit:cover;border-radius:6px;margin-bottom:8px;" />` : ""}
-                <div style="font-weight:800;font-size:14px;margin-bottom:2px;">${item.title}</div>
-                <div style="color:#888;font-size:12px;margin-bottom:4px;">${item.locations?.name ?? "Unknown"} · ${formatDate(item.date)}</div>
-                <span style="display:inline-block;padding:2px 8px;border-radius:99px;font-size:11px;font-weight:700;background:${color}22;color:${color};border:1px solid ${color}44;">${IMPORTANCE_LABELS[item.importance]}</span>
-                ${item.resolved ? ' <span style="display:inline-block;padding:2px 8px;border-radius:99px;font-size:11px;font-weight:700;background:#dcfce7;color:#16a34a;">Resolved</span>' : ""}
-                <div style="color:#666;font-size:12px;margin-top:6px;line-height:1.4;">${(item.description || "").slice(0, 120)}${(item.description || "").length > 120 ? "…" : ""}</div>
-              </div>
-            `,
-          });
-          iw.open({ anchor: marker, map });
-          infoWindowRef.current = iw;
+          if (mapInstanceRef.current && item._lat && item._lng) {
+            mapInstanceRef.current.panTo({ lat: item._lat, lng: item._lng });
+            mapInstanceRef.current.setZoom(18);
+          }
+          setSelectedItem(item);
         });
 
         markersRef.current.push(marker);
@@ -430,11 +502,12 @@ export default function MapPage() {
                         "&:hover": { boxShadow: "0 2px 12px rgba(168,77,72,0.12)" },
                       }}
                       onClick={() => {
-                        // Pan map to item
+                        // Pan + zoom to item, then open detail modal
                         if (mapInstanceRef.current && item._lat && item._lng) {
                           mapInstanceRef.current.panTo({ lat: item._lat, lng: item._lng });
-                          mapInstanceRef.current.setZoom(17);
+                          mapInstanceRef.current.setZoom(20);
                         }
+                        setSelectedItem(item);
                       }}
                     >
                       <Box sx={{ display: "flex", gap: 1.5, alignItems: "center" }}>
@@ -474,6 +547,13 @@ export default function MapPage() {
           </Collapse>
         </Box>
       </Box>
+
+      {/* Detail modal — opens on marker click or sidebar item click */}
+      <DetailModal
+        item={selectedItem}
+        onClose={() => setSelectedItem(null)}
+        onClaim={handleClaim}
+      />
     </Box>
   );
 }
