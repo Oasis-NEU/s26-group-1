@@ -485,6 +485,8 @@ export default function FeedPage() {
             <Button
               variant="outlined"
               onClick={() => {
+                const btn = document.getElementById("feed-refresh-icon");
+                if (btn) btn.style.transform = "rotate(360deg)";
                 setLoading(true);
                 supabase
                   .from("listings")
@@ -493,11 +495,20 @@ export default function FeedPage() {
                   .then(({ data, error }) => {
                     if (!error) setItems(data ?? []);
                     setLoading(false);
+                    setTimeout(() => { if (btn) btn.style.transform = "rotate(0deg)"; }, 600);
                   });
               }}
-              sx={{ borderColor: "#ecdcdc", color: "#A84D48", fontWeight: 800, borderRadius: 2, minWidth: 0, px: 1.5 }}
+              sx={{
+                borderColor: "#ecdcdc", color: "#A84D48", fontWeight: 800,
+                borderRadius: 2, minWidth: 0, px: 1.5, fontSize: 18,
+              }}
             >
-              ↻
+              <span
+                id="feed-refresh-icon"
+                style={{ display: "inline-block", transition: "transform 0.6s cubic-bezier(0.4,0,0.2,1)" }}
+              >
+                ↻
+              </span>
             </Button>
             <Button
               variant="contained" startIcon={<AddIcon />} onClick={() => setShowNew(true)}

@@ -83,32 +83,38 @@ export default function MapPage() {
   const [radius, setRadius] = useState(150);               // feet
   const [nearbyItems, setNearbyItems] = useState([]);
   const [showPanel, setShowPanel] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
 
   // ---- Fetch all listings with coordinates ----
-  useEffect(() => {
-    (async () => {
-      setLoading(true);
-      const { data, error } = await supabase
-        .from("listings")
-        .select("*, locations(name, coordinates)")
-        .order("date", { ascending: false });
+  const fetchItems = useCallback(async () => {
+    setLoading(true);
+    const { data, error } = await supabase
+      .from("listings")
+      .select("*, locations(name, coordinates)")
+      .order("date", { ascending: false });
 
-      if (!error && data) {
-        // Normalise: prefer item-level lat/lng, fallback to location coordinates
-        const normalized = data.map((item) => {
-          let lat = item.lat;
-          let lng = item.lng;
-          if (lat == null && item.locations?.coordinates) {
-            const parsed = parseCoordinates(item.locations.coordinates);
-            if (parsed) { lat = parsed.lat; lng = parsed.lng; }
-          }
-          return { ...item, _lat: lat, _lng: lng };
-        });
-        setItems(normalized);
-      }
-      setLoading(false);
-    })();
+    if (!error && data) {
+      const normalized = data.map((item) => {
+        let lat = item.lat;
+        let lng = item.lng;
+        if (lat == null && item.locations?.coordinates) {
+          const parsed = parseCoordinates(item.locations.coordinates);
+          if (parsed) { lat = parsed.lat; lng = parsed.lng; }
+        }
+        return { ...item, _lat: lat, _lng: lng };
+      });
+      setItems(normalized);
+    }
+    setLoading(false);
   }, []);
+
+  useEffect(() => { fetchItems(); }, [fetchItems]);
+
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    await fetchItems();
+    setTimeout(() => setRefreshing(false), 600);
+  };
 
   // ---- Initialize Google Map ----
   useEffect(() => {
@@ -120,7 +126,7 @@ export default function MapPage() {
 
       const map = new Map(mapRef.current, {
         center: CAMPUS_CENTER,
-        zoom: 15,
+        zoom: 16,
         disableDefaultUI: true,
         zoomControl: true,
         gestureHandling: "greedy",
@@ -215,13 +221,30 @@ export default function MapPage() {
       const { AdvancedMarkerElement } = await importLibrary("marker");
 
       // Only show items that are within the radius
-      nearbyItems.forEach((item) => {
+      nearbyItems.forEach((item, index) => {
         if (item._lat == null || item._lng == null) return;
         const color = item.resolved ? "#94a3b8" : (IMPORTANCE_COLORS[item.importance] || "#666");
 
         const el = document.createElement("div");
         el.style.transition = "opacity 0.3s";
+        // Drop-bounce animation staggered by index
+        el.style.animation = `markerDrop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) ${index * 0.05}s both`;
         el.innerHTML = `<svg width="24" height="32" viewBox="0 0 24 32" fill="none"><path d="M12 0C5.37 0 0 5.37 0 12c0 9 12 20 12 20s12-11 12-20C24 5.37 18.63 0 12 0z" fill="${color}"/><circle cx="12" cy="12" r="5" fill="#fff" opacity="0.9"/></svg>`;
+
+        // Inject keyframes if not already present
+        if (!document.getElementById("marker-drop-style")) {
+          const style = document.createElement("style");
+          style.id = "marker-drop-style";
+          style.textContent = `
+            @keyframes markerDrop {
+              0% { opacity: 0; transform: translateY(-20px) scale(0.6); }
+              60% { opacity: 1; transform: translateY(2px) scale(1.05); }
+              80% { transform: translateY(-1px) scale(0.98); }
+              100% { opacity: 1; transform: translateY(0) scale(1); }
+            }
+          `;
+          document.head.appendChild(style);
+        }
 
         const marker = new AdvancedMarkerElement({
           map,
@@ -282,16 +305,34 @@ export default function MapPage() {
           <Typography variant="h4" fontWeight={900}>
             Campus Map
           </Typography>
-          {searchPin && (
+          <Box sx={{ display: "flex", gap: 1, alignItems: "center" }}>
+            {searchPin && (
+              <Button
+                size="small"
+                onClick={clearSearch}
+                startIcon={<CloseIcon />}
+                sx={{ color: "#A84D48", fontWeight: 700 }}
+              >
+                Clear Pin
+              </Button>
+            )}
             <Button
-              size="small"
-              onClick={clearSearch}
-              startIcon={<CloseIcon />}
-              sx={{ color: "#A84D48", fontWeight: 700 }}
+              variant="outlined"
+              onClick={handleRefresh}
+              disabled={refreshing}
+              sx={{
+                borderColor: "#ecdcdc", color: "#A84D48", fontWeight: 800,
+                borderRadius: 2, minWidth: 0, px: 1.5, fontSize: 18,
+                "& .refresh-icon": {
+                  display: "inline-block",
+                  transition: "transform 0.6s cubic-bezier(0.4,0,0.2,1)",
+                  transform: refreshing ? "rotate(360deg)" : "rotate(0deg)",
+                },
+              }}
             >
-              Clear Pin
+              <span className="refresh-icon">↻</span>
             </Button>
-          )}
+          </Box>
         </Box>
 
         <Box sx={{ display: "flex", gap: 2.5, flexDirection: { xs: "column", md: "row" } }}>
