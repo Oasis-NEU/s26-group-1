@@ -259,7 +259,7 @@ function NewItemModal({ open, onClose, onAdd }) {
 
   useEffect(() => {
     if (!open) return;
-    supabase.from("locations").select("location_id, name, coordinates").then(({ data }) => {
+    supabase.from("locations").select("location_id, name, coordinates").order("name", { ascending: true }).then(({ data }) => {
       if (data) setLocations(data);
     });
   }, [open]);
