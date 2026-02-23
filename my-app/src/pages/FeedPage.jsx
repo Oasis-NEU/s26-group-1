@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import {
   Box, Typography, Paper, TextField, Button, Select, MenuItem,
   FormControl, InputLabel, Chip, CircularProgress, Modal, Slider,
@@ -11,8 +11,7 @@ import UploadIcon from "@mui/icons-material/UploadFile";
 import MapIcon from "@mui/icons-material/PinDrop";
 import { supabase } from "../supabaseClient";
 import { useAuth } from "../AuthContext";
-// Reusable click‑to‑drop map pin component
-import MapPinPicker from "../components/Mappinpicker";
+import MapPinPicker from "../components/MapPinPicker";
 
 // --- Constants ---
 const CATEGORIES = ["All", "Husky Card", "Jacket", "Wallet/Purse", "Bag", "Keys", "Electronics", "Other"];
@@ -27,6 +26,31 @@ function formatDate(d) {
   if (diff === 0) return "Today";
   if (diff === 1) return "Yesterday";
   return `${diff} days ago`;
+}
+
+/**
+ * Parse coordinate strings like "42.3391° N 71.0898° W" into { lat, lng }.
+ * Returns null if parsing fails.
+ */
+function parseCoordinates(coordStr) {
+  if (!coordStr || typeof coordStr !== "string") return null;
+  // Match patterns like "42.3391° N 71.0898° W" or "42.3391°N 71.0898°W"
+  const match = coordStr.match(
+    /([\d.]+)°?\s*([NS])\s+([\d.]+)°?\s*([EW])/i
+  );
+  if (!match) {
+    // Try JSON object format { lat, lng }
+    try {
+      const obj = typeof coordStr === "string" ? JSON.parse(coordStr) : coordStr;
+      if (obj.lat != null && obj.lng != null) return { lat: Number(obj.lat), lng: Number(obj.lng) };
+    } catch { /* ignore */ }
+    return null;
+  }
+  let lat = parseFloat(match[1]);
+  let lng = parseFloat(match[3]);
+  if (match[2].toUpperCase() === "S") lat = -lat;
+  if (match[4].toUpperCase() === "W") lng = -lng;
+  return { lat, lng };
 }
 
 // --- ImageUpload ---
@@ -132,6 +156,12 @@ function ItemCard({ item, onClick }) {
 function DetailModal({ item, onClose, onClaim }) {
   const [claimed, setClaimed] = useState(false);
   if (!item) return null;
+
+  // Try to get coordinates from item-level lat/lng or from the location
+  const pinCoords = (item.lat && item.lng)
+    ? { lat: item.lat, lng: item.lng }
+    : parseCoordinates(item.locations?.coordinates);
+
   return (
     <Modal open={!!item} onClose={onClose}>
       <Box sx={{
@@ -149,7 +179,6 @@ function DetailModal({ item, onClose, onClaim }) {
           <IconButton onClick={onClose} size="small"><CloseIcon /></IconButton>
         </Box>
 
-        {/* Main listing photo, or a placeholder if missing */}
         {item.image_url
           ? <Box component="img" src={item.image_url} alt={item.title} sx={{ width: "100%", height: 200, objectFit: "cover", borderRadius: 2, mb: 2, border: "1.5px solid #ecdcdc" }} />
           : <Box sx={{ width: "100%", height: 120, background: "#f5f0f0", borderRadius: 2, mb: 2, display: "flex", alignItems: "center", justifyContent: "center", border: "1.5px dashed #dac8c8" }}>
@@ -157,29 +186,27 @@ function DetailModal({ item, onClose, onClaim }) {
             </Box>
         }
 
-        {/* Importance / category / resolved badges */}
         <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap", mb: 2 }}>
           <Chip label={IMPORTANCE_LABELS[item.importance]} size="small" sx={{ background: IMPORTANCE_COLORS[item.importance] + "22", color: IMPORTANCE_COLORS[item.importance], fontWeight: 800 }} />
           <Chip label={item.category} size="small" sx={{ background: "#f5eded", color: "#A84D48", fontWeight: 700 }} />
           {item.resolved && <Chip label="Resolved" size="small" sx={{ background: "#dcfce7", color: "#16a34a", fontWeight: 800 }} />}
         </Box>
 
-        {/* Location section — shows building text and mini map (if pinned) */}
+        {/* Location section with map */}
         <Paper variant="outlined" sx={{ p: 2, mb: 2, background: "#fdf7f7", borderColor: "#ecdcdc", borderRadius: 2 }}>
           <Typography variant="caption" fontWeight={800} color="#a07070" sx={{ letterSpacing: 0.5, display: "block", mb: 0.75 }}>LOCATION</Typography>
           <Typography fontWeight={700} fontSize={14}>{item.locations?.name ?? "Unknown location"}</Typography>
           <Typography variant="caption" color="text.secondary" fontWeight={600}>Found at: {item.found_at}</Typography>
 
-          {/* Show read‑only mini map when the listing has lat/lng */}
-          {(item.lat && item.lng) ? (
+          {pinCoords ? (
             <Box sx={{ mt: 1.5 }}>
               <MapPinPicker
-                value={{ lat: item.lat, lng: item.lng }}
+                value={pinCoords}
                 height={120}
                 interactive={false}
                 showCoords={false}
                 zoom={17}
-                center={{ lat: item.lat, lng: item.lng }}
+                center={pinCoords}
               />
             </Box>
           ) : (
@@ -189,13 +216,11 @@ function DetailModal({ item, onClose, onClaim }) {
           )}
         </Paper>
 
-        {/* Long‑form description of the item */}
         <Box sx={{ mb: 3 }}>
           <Typography variant="caption" fontWeight={800} color="#a07070" sx={{ letterSpacing: 0.5, display: "block", mb: 0.75 }}>DESCRIPTION</Typography>
           <Typography variant="body2" color="text.secondary" lineHeight={1.65}>{item.description}</Typography>
         </Box>
 
-        {/* Claim + future messaging actions */}
         <Box sx={{ display: "flex", gap: 1.5 }}>
           <Button
             variant="contained"
@@ -218,7 +243,7 @@ function DetailModal({ item, onClose, onClaim }) {
   );
 }
 
-// --- NewItemModal: Updated with optional map pin picker ---
+// --- NewItemModal: Building auto-places pin, user can drag to adjust ---
 function NewItemModal({ open, onClose, onAdd }) {
   const { user, profile } = useAuth();
   const [locations, setLocations] = useState([]);
@@ -228,18 +253,31 @@ function NewItemModal({ open, onClose, onAdd }) {
   });
   const [submitting, setSubmitting] = useState(false);
   const [showMap, setShowMap] = useState(false);
-  // Helper to update one field in the form state
+  const [flyTo, setFlyTo] = useState(null);
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
-  // Basic required‑field validation for the submit button
   const valid = form.title.trim() && form.found_at.trim() && form.description.trim() && form.location_id;
 
-  // Load list of campus buildings for the dropdown when modal opens
   useEffect(() => {
     if (!open) return;
-    supabase.from("locations").select("location_id, name").then(({ data }) => {
+    supabase.from("locations").select("location_id, name, coordinates").order("name", { ascending: true }).then(({ data }) => {
       if (data) setLocations(data);
     });
   }, [open]);
+
+  // When user selects a building, auto-place pin at its coordinates
+  const handleBuildingChange = (location_id) => {
+    set("location_id", location_id);
+    const loc = locations.find((l) => l.location_id === location_id);
+    if (!loc) return;
+
+    const coords = parseCoordinates(loc.coordinates);
+    if (coords) {
+      set("pin", coords);
+      setFlyTo({ ...coords, zoom: 18 });
+      // Auto-expand the map if it's collapsed
+      if (!showMap) setShowMap(true);
+    }
+  };
 
   const handleSubmit = async () => {
     if (!valid) return;
@@ -247,7 +285,6 @@ function NewItemModal({ open, onClose, onAdd }) {
 
     let image_url = null;
 
-    // If the user attached a photo, upload it to Supabase Storage
     if (form.image?.file) {
       const ext = form.image.file.name.split(".").pop();
       const path = `${user.id}/${Date.now()}.${ext}`;
@@ -278,7 +315,7 @@ function NewItemModal({ open, onClose, onAdd }) {
       date: new Date().toISOString(),
     };
 
-    // If a pin was dropped, persist its coordinates on the listing
+    // Include lat/lng if pin was placed
     if (form.pin) {
       insertData.lat = form.pin.lat;
       insertData.lng = form.pin.lng;
@@ -296,6 +333,7 @@ function NewItemModal({ open, onClose, onAdd }) {
       onClose();
       setForm({ title: "", category: "Other", location_id: "", found_at: "", importance: 2, description: "", image: null, pin: null });
       setShowMap(false);
+      setFlyTo(null);
     }
   };
 
@@ -322,7 +360,7 @@ function NewItemModal({ open, onClose, onAdd }) {
           </FormControl>
           <FormControl fullWidth>
             <InputLabel>Building</InputLabel>
-            <Select value={form.location_id} label="Building" onChange={e => set("location_id", e.target.value)}>
+            <Select value={form.location_id} label="Building" onChange={e => handleBuildingChange(e.target.value)}>
               {locations.map(l => <MenuItem key={l.location_id} value={l.location_id}>{l.name}</MenuItem>)}
             </Select>
           </FormControl>
@@ -331,7 +369,7 @@ function NewItemModal({ open, onClose, onAdd }) {
         <TextField label="Found At (specific spot)" value={form.found_at} onChange={e => set("found_at", e.target.value)} placeholder="e.g. Table near window, Room 204" fullWidth sx={{ mb: 2 }} />
         <TextField label="Description" value={form.description} onChange={e => set("description", e.target.value)} placeholder="Color, markings, contents..." multiline rows={3} fullWidth sx={{ mb: 2 }} />
 
-        {/* --- Optional map pin so reporters can mark the exact spot --- */}
+        {/* --- Map pin section --- */}
         <Box sx={{ mb: 2 }}>
           <Button
             size="small"
@@ -343,20 +381,22 @@ function NewItemModal({ open, onClose, onAdd }) {
               background: form.pin ? "#dcfce722" : "transparent",
             }}
           >
-            {form.pin ? "📍 Pin placed — tap to edit" : "Drop a pin on the map (optional)"}
+            {form.pin
+              ? `📍 Pin placed${form.location_id ? "" : ""} — tap to ${showMap ? "hide" : "edit"}`
+              : "Drop a pin on the map (optional)"}
           </Button>
 
-          {/* Inline map picker that lets the user drop / edit a pin */}
           <Collapse in={showMap}>
             <MapPinPicker
               value={form.pin}
               onChange={(latLng) => set("pin", latLng)}
-              height={180}
+              height={200}
+              flyTo={flyTo}
             />
             {form.pin && (
               <Button
                 size="small"
-                onClick={() => set("pin", null)}
+                onClick={() => { set("pin", null); setFlyTo(null); }}
                 sx={{ mt: 0.5, color: "#A84D48", fontSize: 12 }}
               >
                 Remove pin

@@ -14,6 +14,7 @@ import MyLocationIcon from "@mui/icons-material/MyLocation";
  *   zoom         – initial zoom (default 16)
  *   interactive  – allow clicking to move pin (default true)
  *   showCoords   – show lat/lng text under map (default true)
+ *   flyTo        – { lat, lng, zoom? } | null — when set, map pans here and places/moves pin
  */
 const DEFAULT_CENTER = { lat: 42.3398, lng: -71.0892 };
 
@@ -25,15 +26,18 @@ export default function MapPinPicker({
   zoom = 16,
   interactive = true,
   showCoords = true,
+  flyTo = null,
 }) {
-  // DOM node for the map and long‑lived Google Maps objects
   const mapRef = useRef(null);
   const mapInstanceRef = useRef(null);
   const markerRef = useRef(null);
-  // Used so we only show the helper text once the map is ready
   const [ready, setReady] = useState(false);
 
-  // Initialize map
+  // Keep latest onChange in a ref so listeners always use the current callback
+  const onChangeRef = useRef(onChange);
+  useEffect(() => { onChangeRef.current = onChange; }, [onChange]);
+
+  // Initialize map (once)
   useEffect(() => {
     let cancelled = false;
 
@@ -55,7 +59,7 @@ export default function MapPinPicker({
 
       mapInstanceRef.current = map;
 
-      // If a pin value is provided, render a marker at that spot
+      // Place marker if value already exists
       if (value) {
         const marker = new AdvancedMarkerElement({
           map,
@@ -67,12 +71,12 @@ export default function MapPinPicker({
         if (interactive) {
           marker.addListener("dragend", () => {
             const pos = marker.position;
-            onChange?.({ lat: pos.lat, lng: pos.lng });
+            onChangeRef.current?.({ lat: pos.lat, lng: pos.lng });
           });
         }
       }
 
-      // When interactive, clicking the map drops (or moves) the pin
+      // Click to place / move pin
       if (interactive) {
         map.addListener("click", (e) => {
           const latLng = { lat: e.latLng.lat(), lng: e.latLng.lng() };
@@ -87,37 +91,62 @@ export default function MapPinPicker({
             });
             marker.addListener("dragend", () => {
               const pos = marker.position;
-              onChange?.({ lat: pos.lat, lng: pos.lng });
+              onChangeRef.current?.({ lat: pos.lat, lng: pos.lng });
             });
             markerRef.current = marker;
           }
 
-          onChange?.(latLng);
+          onChangeRef.current?.(latLng);
         });
       }
 
       setReady(true);
     })();
 
-    return () => {
-      cancelled = true;
-    };
-    // Only re-init if interactive changes; value updates are handled via marker ref
+    return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [interactive]);
 
-  // Sync marker when value prop changes externally
+  // Handle flyTo: pan map + place/move pin programmatically
   useEffect(() => {
-    if (!markerRef.current || !value) return;
-    const pos = markerRef.current.position;
-    if (pos.lat !== value.lat || pos.lng !== value.lng) {
-      markerRef.current.position = value;
+    if (!flyTo || !mapInstanceRef.current) return;
+
+    const map = mapInstanceRef.current;
+    map.panTo(flyTo);
+    map.setZoom(flyTo.zoom ?? 18);
+
+    (async () => {
+      const { AdvancedMarkerElement } = await importLibrary("marker");
+
+      if (markerRef.current) {
+        markerRef.current.position = flyTo;
+      } else {
+        const marker = new AdvancedMarkerElement({
+          map,
+          position: flyTo,
+          gmpDraggable: interactive,
+        });
+        if (interactive) {
+          marker.addListener("dragend", () => {
+            const pos = marker.position;
+            onChangeRef.current?.({ lat: pos.lat, lng: pos.lng });
+          });
+        }
+        markerRef.current = marker;
+      }
+    })();
+  }, [flyTo, interactive]);
+
+  // If value is cleared externally, remove the marker
+  useEffect(() => {
+    if (value === null && markerRef.current) {
+      markerRef.current.map = null;
+      markerRef.current = null;
     }
   }, [value]);
 
   return (
     <Box>
-      {/* Map canvas where Google Maps renders into */}
       <Box
         ref={mapRef}
         sx={{
@@ -132,31 +161,22 @@ export default function MapPinPicker({
       />
 
       {interactive && !value && ready && (
-        // Helper hint shown before the user has dropped a pin
-        <Box
-          sx={{
-            display: "flex",
-            alignItems: "center",
-            gap: 0.5,
-            mt: 0.75,
-          }}
-        >
+        <Box sx={{ display: "flex", alignItems: "center", gap: 0.5, mt: 0.75 }}>
           <MyLocationIcon sx={{ fontSize: 14, color: "#a07070" }} />
           <Typography variant="caption" color="text.secondary" fontWeight={600}>
-            Tap the map to drop a pin
+            Tap the map to adjust the pin location
           </Typography>
         </Box>
       )}
 
       {showCoords && value && (
-        // Small caption showing the numeric coordinates of the pin
         <Typography
           variant="caption"
           color="text.secondary"
           fontWeight={600}
           sx={{ mt: 0.5, display: "block" }}
         >
-          📍 {value.lat.toFixed(5)}, {value.lng.toFixed(5)}
+          📍 {value.lat.toFixed(5)}, {value.lng.toFixed(5)} — drag to adjust
         </Typography>
       )}
     </Box>

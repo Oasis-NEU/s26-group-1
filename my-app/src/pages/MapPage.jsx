@@ -10,7 +10,6 @@ import CloseIcon from "@mui/icons-material/Close";
 import ListIcon from "@mui/icons-material/ViewList";
 import { supabase } from "../supabaseClient";
 
-// Configure the shared Google Maps JS API loader
 setOptions({
   key: import.meta.env.VITE_GOOGLE_MAPS_API_KEY,
   v: "weekly",
@@ -28,9 +27,26 @@ const RADIUS_MARKS = [
 ];
 
 /**
- * Compute distance between two lat/lng points (miles) using Haversine.
- * Used to decide which listings fall inside the user‑selected radius.
+ * Parse coordinate strings like "42.3391° N 71.0898° W" into { lat, lng }.
  */
+function parseCoordinates(coordStr) {
+  if (!coordStr || typeof coordStr !== "string") return null;
+  const match = coordStr.match(/([\d.]+)°?\s*([NS])\s+([\d.]+)°?\s*([EW])/i);
+  if (!match) {
+    try {
+      const obj = typeof coordStr === "string" ? JSON.parse(coordStr) : coordStr;
+      if (obj.lat != null && obj.lng != null) return { lat: Number(obj.lat), lng: Number(obj.lng) };
+    } catch { /* ignore */ }
+    return null;
+  }
+  let lat = parseFloat(match[1]);
+  let lng = parseFloat(match[3]);
+  if (match[2].toUpperCase() === "S") lat = -lat;
+  if (match[4].toUpperCase() === "W") lng = -lng;
+  return { lat, lng };
+}
+
+/** Haversine distance in miles */
 function haversine(a, b) {
   const R = 3958.8;
   const dLat = ((b.lat - a.lat) * Math.PI) / 180;
@@ -52,9 +68,8 @@ function formatDate(d) {
   return `${diff}d ago`;
 }
 
-// --- MapPage --- shows all listings on a campus map + nearby‑search UI
+// --- MapPage ---
 export default function MapPage() {
-  // Map DOM node + long‑lived Google Maps objects
   const mapRef = useRef(null);
   const mapInstanceRef = useRef(null);
   const searchPinRef = useRef(null);
@@ -62,7 +77,6 @@ export default function MapPage() {
   const markersRef = useRef([]);
   const infoWindowRef = useRef(null);
 
-  // Listing data and UI state for the "nearby" search
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchPin, setSearchPin] = useState(null);        // { lat, lng }
@@ -70,7 +84,7 @@ export default function MapPage() {
   const [nearbyItems, setNearbyItems] = useState([]);
   const [showPanel, setShowPanel] = useState(false);
 
-  // ---- Fetch all listings with coordinates from Supabase ----
+  // ---- Fetch all listings with coordinates ----
   useEffect(() => {
     (async () => {
       setLoading(true);
@@ -80,17 +94,13 @@ export default function MapPage() {
         .order("date", { ascending: false });
 
       if (!error && data) {
-        // Normalise each listing: prefer item-level lat/lng, else fall back
+        // Normalise: prefer item-level lat/lng, fallback to location coordinates
         const normalized = data.map((item) => {
           let lat = item.lat;
           let lng = item.lng;
           if (lat == null && item.locations?.coordinates) {
-            // coordinates stored as { lat, lng } or [lng, lat] (PostGIS)
-            const c = item.locations.coordinates;
-            if (typeof c === "object" && !Array.isArray(c)) {
-              lat = c.lat;
-              lng = c.lng;
-            }
+            const parsed = parseCoordinates(item.locations.coordinates);
+            if (parsed) { lat = parsed.lat; lng = parsed.lng; }
           }
           return { ...item, _lat: lat, _lng: lng };
         });
@@ -100,7 +110,7 @@ export default function MapPage() {
     })();
   }, []);
 
-  // ---- Initialize Google Map once, wiring up click‑to‑drop search pin ----
+  // ---- Initialize Google Map ----
   useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -120,7 +130,7 @@ export default function MapPage() {
 
       mapInstanceRef.current = map;
 
-      // When user clicks anywhere on the map, drop a red search pin
+      // Click to place search pin
       map.addListener("click", (e) => {
         const pos = { lat: e.latLng.lat(), lng: e.latLng.lng() };
         setSearchPin(pos);
@@ -131,7 +141,7 @@ export default function MapPage() {
     return () => { cancelled = true; };
   }, []);
 
-  // ---- Place / move the search pin + matching radius circle ----
+  // ---- Place / move the search pin + radius circle ----
   useEffect(() => {
     if (!mapInstanceRef.current) return;
     const map = mapInstanceRef.current;
@@ -139,14 +149,13 @@ export default function MapPage() {
     (async () => {
       const { AdvancedMarkerElement } = await importLibrary("marker");
 
-      // If pin has been cleared, remove marker + circle from map
       if (!searchPin) {
         if (searchPinRef.current) { searchPinRef.current.map = null; searchPinRef.current = null; }
         if (circleRef.current) { circleRef.current.setMap(null); circleRef.current = null; }
         return;
       }
 
-      // Search pin marker (red, draggable)
+      // Search pin marker (red)
       if (searchPinRef.current) {
         searchPinRef.current.position = searchPin;
       } else {
@@ -166,7 +175,7 @@ export default function MapPage() {
         searchPinRef.current = marker;
       }
 
-      // Radius circle visualising the current search distance around the pin
+      // Radius circle
       const radiusMeters = radius * 1609.34;
       if (circleRef.current) {
         circleRef.current.setCenter(searchPin);
@@ -190,7 +199,7 @@ export default function MapPage() {
     })();
   }, [searchPin, radius]);
 
-  // ---- Render item markers for every listing with coordinates ----
+  // ---- Render item markers ----
   useEffect(() => {
     if (!mapInstanceRef.current) return;
     const map = mapInstanceRef.current;
@@ -198,14 +207,13 @@ export default function MapPage() {
     (async () => {
       const { AdvancedMarkerElement } = await importLibrary("marker");
 
-      // Clear old markers before re‑drawing
+      // Clear old markers
       markersRef.current.forEach((m) => (m.map = null));
       markersRef.current = [];
 
       const mappable = items.filter((i) => i._lat != null && i._lng != null);
 
       mappable.forEach((item) => {
-        // Dim markers that fall outside the current radius when searching
         const isNearby = !searchPin || nearbyItems.some((n) => n.item_id === item.item_id);
         const color = item.resolved ? "#94a3b8" : (IMPORTANCE_COLORS[item.importance] || "#666");
         const opacity = searchPin && !isNearby ? 0.25 : 1;
@@ -221,7 +229,7 @@ export default function MapPage() {
           content: el,
         });
 
-        // Rich info window on marker click (thumbnail + metadata)
+        // Info window on click
         marker.addListener("click", () => {
           if (infoWindowRef.current) infoWindowRef.current.close();
           const iw = new google.maps.InfoWindow({
@@ -246,7 +254,7 @@ export default function MapPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [items, searchPin, nearbyItems]);
 
-  // ---- Recompute list of nearby items whenever pin or radius changes ----
+  // ---- Filter nearby items when pin or radius changes ----
   useEffect(() => {
     if (!searchPin) {
       setNearbyItems([]);
@@ -259,7 +267,7 @@ export default function MapPage() {
     setNearbyItems(nearby);
   }, [searchPin, radius, items]);
 
-  // ---- Clear search pin and collapse side panel ----
+  // ---- Clear search pin ----
   const clearSearch = () => {
     setSearchPin(null);
     setShowPanel(false);
