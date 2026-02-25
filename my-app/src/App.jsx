@@ -5,6 +5,7 @@ import { useAuth } from "./AuthContext";
 import LoginPage from "./pages/LoginPage";
 import FeedPage from './pages/FeedPage';
 import MapPage from "./pages/MapPage";
+import MessagePage from "./pages/MessagePage";
 import SettingsPage from "./pages/SettingsPage";
 import { AppBar, Toolbar, Button, Typography, Container, Box, Paper } from '@mui/material';
 import HomeIcon from '@mui/icons-material/Home';
@@ -12,6 +13,7 @@ import FeedIcon from "@mui/icons-material/DynamicFeed";
 import MapIcon from '@mui/icons-material/Map';
 import SettingsIcon from '@mui/icons-material/Settings';
 import LogoutIcon from '@mui/icons-material/Logout';
+import MessageIcon from '@mui/icons-material/Message';
 import { useState } from 'react';
 
 // --- App: Main application component with routing and navigation ---
@@ -44,8 +46,17 @@ export default function App() {
             component={Link}
             to="/map"
             startIcon={<MapIcon />}
+            sx={{ mr: 2 }}
           >
             Map
+          </Button>
+          <Button
+            color="inherit"
+            component={Link}
+            to = "/messages"
+            startIcon={<MessageIcon />}
+          >
+            Messages
           </Button>
           <Box sx={{ flexGrow: 1 }} />
           <Typography variant="body1" sx={{ mr: 2 }}>
@@ -54,10 +65,10 @@ export default function App() {
               : user.email}
           </Typography>
           <Button
-            color = "inherit"
+            color="inherit"
             component={Link}
             to="/settings"
-            endIcon = {<SettingsIcon />}
+            endIcon={<SettingsIcon />}
             sx={{ mr: 2 }}
           >
             Settings
@@ -76,6 +87,7 @@ export default function App() {
         <Routes>
           <Route path="/" element={<FeedPage />} />
           <Route path="/map" element={<MapPage />} />
+          <Route path = "/messages" element = {<MessagePage />} />
           <Route path="/settings" element={<SettingsPage />} />
         </Routes>
       </Box>
