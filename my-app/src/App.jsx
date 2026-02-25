@@ -31,7 +31,22 @@ export default function App() {
       {/* Main app content overlayed above background */}
       <AppBar position="fixed">
         <Toolbar>
-          {/* TODO: Add logo on far left of navbar */}
+          {/* Brand logo + name */}
+          <Box
+            component={Link}
+            to="/"
+            sx={{ display: "flex", alignItems: "center", gap: 1, mr: 3, textDecoration: "none", color: "inherit" }}
+          >
+            <Box
+              component="img"
+              src="/LostandHoundLogo.PNG"
+              alt="Lost & Hound logo"
+              sx={{ height: 32, width: 32, objectFit: "contain", filter: "brightness(0) invert(1)" }}
+            />
+            <Typography variant="h6" fontWeight={900} sx={{ letterSpacing: 0.5 }}>
+              Lost &amp; Hound
+            </Typography>
+          </Box>
           <Button
             color="inherit"
             component={Link}
@@ -83,13 +98,36 @@ export default function App() {
         </Toolbar>
       </AppBar>
       <Toolbar /> {/* Spacer for fixed AppBar */}
-      <Box sx={{ mt: 0 }}>
+      <Box sx={{ mt: 0, pb: "48px" }}>
         <Routes>
           <Route path="/" element={<FeedPage />} />
           <Route path="/map" element={<MapPage />} />
           <Route path = "/messages" element = {<MessagePage />} />
           <Route path="/settings" element={<SettingsPage />} />
         </Routes>
+      </Box>
+
+      {/* Footer */}
+      <Box
+        component="footer"
+        sx={{
+          position: "fixed",
+          bottom: 0,
+          left: 0,
+          right: 0,
+          height: 36,
+          px: 3,
+          borderTop: "1px solid #ecdcdc",
+          background: "#fff",
+          display: "flex",
+          justifyContent: "center",
+          alignItems: "center",
+          zIndex: 1200,
+        }}
+      >
+        <Typography variant="caption" color="text.disabled" fontWeight={600}>
+          🐾 Lost &amp; Hound · Built by Nahom Hailemelekot, Benjamin Haillu, Liam Pulsifer, and Ryan Sinha · Oasis @ Northeastern
+        </Typography>
       </Box>
     </>
   );

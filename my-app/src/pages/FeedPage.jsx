@@ -224,6 +224,19 @@ function DetailModal({ item, onClose, onClaim }) {
           <Typography variant="body2" color="text.secondary" lineHeight={1.65}>{item.description}</Typography>
         </Box>
 
+        {!item.resolved && (
+          <Box
+            sx={{
+              display: "flex", alignItems: "center", gap: 0.75,
+              px: 1.25, py: 0.75, mb: 1.5, borderRadius: 1.5,
+              background: "#fff3cd", border: "1px solid #ffc107",
+            }}
+          >
+            <Typography variant="caption" sx={{ color: "#7d4e00", fontWeight: 600, lineHeight: 1.4 }}>
+              ⚠️ Falsely claiming an item violates the Northeastern Code of Student Conduct and may result in disciplinary action.
+            </Typography>
+          </Box>
+        )}
         <Box sx={{ display: "flex", gap: 1.5 }}>
           <Button
             variant="contained"

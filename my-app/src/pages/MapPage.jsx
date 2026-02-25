@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
 import { setOptions, importLibrary } from "@googlemaps/js-api-loader";
+import { useAuth } from "../AuthContext";
 import {
   Box, Typography, Paper, Slider, Chip, IconButton, CircularProgress,
   Collapse, Button, Modal, Autocomplete, TextField,
@@ -133,6 +135,8 @@ function formatDate(d) {
 
 // --- DetailModal: Full listing detail view (same as FeedPage) ---
 function DetailModal({ item, onClose, onClaim }) {
+  const { user } = useAuth();
+  const navigate = useNavigate();
   const [claimed, setClaimed] = useState(false);
   if (!item) return null;
   return (
@@ -176,6 +180,19 @@ function DetailModal({ item, onClose, onClaim }) {
           <Typography variant="body2" color="text.secondary" lineHeight={1.65}>{item.description}</Typography>
         </Box>
 
+        {!item.resolved && (
+          <Box
+            sx={{
+              display: "flex", alignItems: "center", gap: 0.75,
+              px: 1.25, py: 0.75, mb: 1.5, borderRadius: 1.5,
+              background: "#fff3cd", border: "1px solid #ffc107",
+            }}
+          >
+            <Typography variant="caption" sx={{ color: "#7d4e00", fontWeight: 600, lineHeight: 1.4 }}>
+              ⚠️ Falsely claiming an item violates the Northeastern Code of Student Conduct and may result in disciplinary action.
+            </Typography>
+          </Box>
+        )}
         <Box sx={{ display: "flex", gap: 1.5 }}>
           <Button
             variant="contained"
@@ -189,7 +206,31 @@ function DetailModal({ item, onClose, onClaim }) {
           >
             {item.resolved ? "Already Resolved" : claimed ? "Marked as Found!" : "This is Mine!"}
           </Button>
-          <Button variant="outlined" sx={{ borderColor: "#ecdcdc", color: "#A84D48", fontWeight: 800, borderRadius: 2, flexShrink: 0 }}>
+          <Button
+            variant="outlined"
+            sx={{ borderColor: "#ecdcdc", color: "#A84D48", fontWeight: 800, borderRadius: 2, flexShrink: 0 }}
+            onClick={async () => {
+              const { data } = await supabase
+                .from("conversations")
+                .select("id")
+                .eq("listing_id", item.item_id)
+                .eq("participant_1", user.id)
+                .maybeSingle();
+
+              if (data != null) {
+                navigate(`/messages?conversation=${data.id}`);
+                return;
+              }
+
+              const { data: created } = await supabase
+                .from("conversations")
+                .insert({ listing_id: item.item_id, participant_1: user.id, participant_2: item.poster_id })
+                .select("id")
+                .single();
+
+              if (created) navigate(`/messages?conversation=${created.id}`);
+            }}
+          >
             Message
           </Button>
         </Box>
