@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useMemo } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import {
   Box, Typography, Paper, TextField, Button, Select, MenuItem,
   FormControl, InputLabel, Chip, CircularProgress, Modal, Slider,
@@ -154,9 +155,11 @@ function ItemCard({ item, onClick }) {
 
 // --- DetailModal ---
 function DetailModal({ item, onClose, onClaim }) {
+  const { user } = useAuth();
+  const navigate = useNavigate();
   const [claimed, setClaimed] = useState(false);
-  if (!item) return null;
 
+  if (!item) return null;
   // Try to get coordinates from item-level lat/lng or from the location
   const pinCoords = (item.lat && item.lng)
     ? { lat: item.lat, lng: item.lng }
@@ -234,7 +237,42 @@ function DetailModal({ item, onClose, onClaim }) {
           >
             {item.resolved ? "Already Resolved" : claimed ? "Marked as Found!" : "This is Mine!"}
           </Button>
-          <Button variant="outlined" sx={{ borderColor: "#ecdcdc", color: "#A84D48", fontWeight: 800, borderRadius: 2, flexShrink: 0 }}>
+          <Button
+            variant="outlined"
+            sx={{ borderColor: "#ecdcdc", color: "#A84D48", fontWeight: 800, borderRadius: 2, flexShrink: 0 }}
+            onClick={async () => {
+              // Queries the conversations table for an existing row
+              // where listing_id = item.item_id AND participant_1 = user.id
+              const { data } = await supabase
+                .from("conversations")
+                .select("id")
+                .eq("listing_id", item.item_id)
+                .eq("participant_1", user.id)
+                .maybeSingle();
+
+              // If a conversation exists, navigate to /messages?conversation=<id>
+              if (data != null) {
+                navigate(`/messages?conversation=${data.id}`);
+                return;
+              }
+
+              // If no conversation exists, insert a new row with
+              //         { listing_id: item.item_id, participant_1: user.id, participant_2: item.poster_id }
+              else {
+                const {data: created } = await supabase
+                  .from("conversations")
+                  .insert({ listing_id: item.item_id, participant_1: user.id, participant_2: item.poster_id })
+                  .select("id")
+                  .single();
+                  
+                // Navigate to /messages?conversation=<newly created id>
+                if (created) navigate(`/messages?conversation=${created.id}`);
+              }
+
+              
+
+            }}
+          >
             Message
           </Button>
         </Box>
@@ -442,6 +480,7 @@ export default function FeedPage() {
   const [sort, setSort] = useState("Newest");
   const [selected, setSelected] = useState(null);
   const [showNew, setShowNew] = useState(false);
+  const [showResolved, setShowResolved] = useState(false);
 
   useEffect(() => {
     const fetchItems = async () => {
@@ -463,6 +502,7 @@ export default function FeedPage() {
   };
 
   const filtered = items
+    .filter(i => showResolved || !i.resolved)
     .filter(i => category === "All" || i.category === category)
     .filter(i =>
       i.title?.toLowerCase().includes(search.toLowerCase()) ||
@@ -541,12 +581,26 @@ export default function FeedPage() {
           <Typography variant="body2" color="text.secondary" fontWeight={700}>
             {filtered.length} item{filtered.length !== 1 ? "s" : ""}
           </Typography>
-          <FormControl size="small" sx={{ minWidth: 150 }}>
-            <InputLabel>Sort by</InputLabel>
-            <Select value={sort} label="Sort by" onChange={e => setSort(e.target.value)}>
-              {SORT_OPTIONS.map(s => <MenuItem key={s} value={s}>{s}</MenuItem>)}
-            </Select>
-          </FormControl>
+          <Box sx={{ display: "flex", gap: 1, alignItems: "center" }}>
+            <Chip
+              label={showResolved ? "Hide Resolved" : "Show Resolved"}
+              clickable
+              onClick={() => setShowResolved(v => !v)}
+              sx={{
+                fontWeight: 800, fontSize: 12,
+                background: showResolved ? "#dcfce7" : "#f5f5f5",
+                color: showResolved ? "#16a34a" : "#999",
+                border: `1.5px solid ${showResolved ? "#86efac" : "#e0e0e0"}`,
+                "&:hover": { background: showResolved ? "#bbf7d0" : "#ececec" },
+              }}
+            />
+            <FormControl size="small" sx={{ minWidth: 150 }}>
+              <InputLabel>Sort by</InputLabel>
+              <Select value={sort} label="Sort by" onChange={e => setSort(e.target.value)}>
+                {SORT_OPTIONS.map(s => <MenuItem key={s} value={s}>{s}</MenuItem>)}
+              </Select>
+            </FormControl>
+          </Box>
         </Box>
 
         {loading
