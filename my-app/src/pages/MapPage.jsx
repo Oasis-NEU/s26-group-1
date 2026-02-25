@@ -79,7 +79,7 @@ const BUILDINGS = [
   { name: "Columbus Garage", lat: 42.3380, lng: -71.0864 },
   { name: "Renaissance Garage", lat: 42.3363, lng: -71.0884 },
   { name: "Stetson East", lat: 42.3414, lng: -71.0902 },
-];
+].sort((a, b) => a.name.localeCompare(b.name));
 
 // --- Hide outside noise ---
 const CLEAN_STYLES = [

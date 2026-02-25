@@ -15,13 +15,10 @@ export function AuthProvider({ children }) {
   const [profile, setProfile] = useState(null);
 
   useEffect(() => {
-    // Supabase equivalent for auth state change
+    // onAuthStateChange fires immediately with INITIAL_SESSION so no separate
+    // getSession() call is needed — that redundant call was causing user state
+    // to be set twice, which tripled profile fetches and destabilised subscriptions.
     const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user || null);
-      setLoading(false);
-    });
-    // Check initial session
-    supabase.auth.getSession().then(({ data: { session } }) => {
       setUser(session?.user || null);
       setLoading(false);
     });
