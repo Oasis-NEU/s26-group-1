@@ -16,10 +16,14 @@ export function AuthProvider({ children }) {
 
   useEffect(() => {
     // onAuthStateChange fires immediately with INITIAL_SESSION so no separate
-    // getSession() call is needed — that redundant call was causing user state
-    // to be set twice, which tripled profile fetches and destabilised subscriptions.
+    // getSession() call is needed. We only update user state when the user ID
+    // actually changes to prevent cascading profile re-fetches on token refresh.
     const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user || null);
+      const nextUser = session?.user || null;
+      setUser(prev => {
+        if (prev?.id === nextUser?.id) return prev; // no-op if same user
+        return nextUser;
+      });
       setLoading(false);
     });
     return () => {
@@ -27,24 +31,46 @@ export function AuthProvider({ children }) {
     };
   }, []);
 
-  // Fetch profile info when user changes
+  // Fetch profile info when user ID changes; skip if already loaded for this user
   useEffect(() => {
     const fetchProfile = async () => {
       if (!user?.id) {
         setProfile(null);
         return;
       }
-      console.log('Fetching profile for user:', user.id);
       const { data, error } = await supabase
         .from('profiles')
         .select('first_name, last_name')
         .eq('id', user.id)
         .single();
-      console.log('Profile fetch result:', { data, error });
-      setProfile(error ? null : data);
+
+      if (!error && data) {
+        setProfile(data);
+        return;
+      }
+
+      // Profile missing — try to create it from user metadata (set during sign-up)
+      const meta = user.user_metadata;
+      if (meta?.first_name && meta?.last_name) {
+        const { data: created, error: upsertErr } = await supabase
+          .from('profiles')
+          .upsert(
+            { id: user.id, first_name: meta.first_name, last_name: meta.last_name },
+            { onConflict: 'id' }
+          )
+          .select('first_name, last_name')
+          .single();
+        if (!upsertErr && created) {
+          setProfile(created);
+          return;
+        }
+        console.error('Profile auto-create error:', upsertErr);
+      }
+
+      setProfile(null);
     };
     fetchProfile();
-  }, [user]);
+  }, [user?.id]); // depend only on user ID, not the whole user object
 
   const logout = async () => {
     await supabase.auth.signOut();
