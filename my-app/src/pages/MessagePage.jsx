@@ -4,6 +4,7 @@ import { Box, Typography, Paper, TextField, IconButton } from "@mui/material";
 import SendIcon from "@mui/icons-material/Send";
 import ChatIcon from "@mui/icons-material/ChatBubbleOutline";
 import DeleteIcon from "@mui/icons-material/Delete";
+import WarningAmberIcon from "@mui/icons-material/WarningAmber";
 import { supabase } from "../supabaseClient";
 import { useAuth } from "../AuthContext";
 
@@ -254,8 +255,8 @@ export default function MessagesPage() {
   }, [conversations, searchParams]);
 
   return (
-    <Box sx={{ display: "flex", justifyContent: "center", width: "100%", p: 3 }}>
-      <Box sx={{ width: "100%", maxWidth: 900 }}>
+    <Box sx={{ display: "flex", justifyContent: "center", width: "100%", p: 3, boxSizing: "border-box", height: "calc(100vh - 64px - 36px)", overflow: "hidden" }}>
+      <Box sx={{ width: "100%", maxWidth: 900, display: "flex", flexDirection: "column", overflow: "hidden" }}>
         {/* Header */}
         <Typography variant="h4" fontWeight={900} sx={{ mb: 2.5 }}>
           Messages
@@ -265,8 +266,8 @@ export default function MessagesPage() {
         <Paper
           elevation={2}
           sx={{
-            height: "calc(100vh - 200px)",
-            minHeight: 400,
+            flex: 1,
+            minHeight: 0,
             borderRadius: 3,
             border: "1.5px solid #ecdcdc",
             overflow: "hidden",
@@ -328,14 +329,31 @@ export default function MessagesPage() {
             </Box>
 
             {/* Right panel — messages */}
-            <Box sx={{ flex: 1, display: "flex", flexDirection: "column" }}>
+            <Box sx={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden", minHeight: 0 }}>
               {/* Empty state — prompt user to pick a conversation */}
               {!selectedConversation ? (
                 <Box sx={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center" }}>
                   <Typography fontWeight={700} color="text.disabled">Select a conversation</Typography>
                 </Box>
               ) : (
-                <>
+                <Box sx={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden", minHeight: 0 }}>
+                {/* Safety warning banner */}
+                <Box
+                  sx={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 1,
+                    px: 2,
+                    py: 1,
+                    background: "#fff8e1",
+                    borderBottom: "1px solid #ffe082",
+                  }}
+                >
+                  <WarningAmberIcon sx={{ color: "#f59e0b", fontSize: 18, flexShrink: 0 }} />
+                  <Typography variant="caption" sx={{ color: "#92400e", fontWeight: 600, lineHeight: 1.4 }}>
+                    Safety reminder: Never share personal information and always meet strangers in a public place. Northeastern is not responsible for in-person meetups.
+                  </Typography>
+                </Box>
                 {/* Scrollable message bubbles area */}
                 <Box sx={{ flex: 1, overflowY: "auto", p: 2, display: "flex", flexDirection: "column", gap: 1 }}>
                   {messages.map((msg) => {
@@ -411,7 +429,7 @@ export default function MessagesPage() {
                   </IconButton>
                 </Box>
                 )}
-                </>  
+                </Box>  
               )}
             </Box>
 
