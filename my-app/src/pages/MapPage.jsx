@@ -12,6 +12,7 @@ import CloseIcon from "@mui/icons-material/Close";
 import ListIcon from "@mui/icons-material/ViewList";
 import SearchIcon from "@mui/icons-material/Search";
 import { supabase } from "../supabaseClient";
+import { CAMPUSES } from "../constants/campuses";
 
 setOptions({
   key: import.meta.env.VITE_GOOGLE_MAPS_API_KEY,
@@ -19,7 +20,6 @@ setOptions({
 });
 
 // --- Constants ---
-const CAMPUS_CENTER = { lat: 42.3398, lng: -71.0892 };
 const IMPORTANCE_LABELS = { 3: "High", 2: "Medium", 1: "Low" };
 const IMPORTANCE_COLORS = { 3: "#b91c1c", 2: "#a16207", 1: "#1d4ed8" };
 const RADIUS_MARKS = [
@@ -29,59 +29,7 @@ const RADIUS_MARKS = [
   { value: 500, label: "500ft" },
 ];
 
-// --- Campus buildings ---
-const BUILDINGS = [
-  { name: "Snell Library", lat: 42.3386, lng: -71.0881 },
-  { name: "Curry Student Center", lat: 42.3391, lng: -71.0875 },
-  { name: "Krentzman Quad", lat: 42.3401, lng: -71.0882 },
-  { name: "Ell Hall", lat: 42.3399, lng: -71.0881 },
-  { name: "Richards Hall", lat: 42.3399, lng: -71.0887 },
-  { name: "Shillman Hall", lat: 42.3376, lng: -71.0902 },
-  { name: "Ryder Hall", lat: 42.3367, lng: -71.0906 },
-  { name: "Hayden Hall", lat: 42.3393, lng: -71.0885 },
-  { name: "Robinson Hall", lat: 42.3393, lng: -71.0868 },
-  { name: "Kariotis Hall", lat: 42.3386, lng: -71.0909 },
-  { name: "Mugar Life Sciences", lat: 42.3397, lng: -71.0870 },
-  { name: "Forsyth Building", lat: 42.3386, lng: -71.0899 },
-  { name: "Behrakis Health Sciences", lat: 42.3370, lng: -71.0914 },
-  { name: "Churchill Hall", lat: 42.3388, lng: -71.0889 },
-  { name: "Dodge Hall", lat: 42.3403, lng: -71.0878 },
-  { name: "Dockser Hall", lat: 42.3386, lng: -71.0902 },
-  { name: "Lake Hall", lat: 42.3383, lng: -71.0908 },
-  { name: "Holmes Hall", lat: 42.3381, lng: -71.0908 },
-  { name: "Nightingale Hall", lat: 42.3381, lng: -71.0901 },
-  { name: "Meserve Hall", lat: 42.3376, lng: -71.0909 },
-  { name: "Stearns Center", lat: 42.3390, lng: -71.0914 },
-  { name: "Cullinane Hall", lat: 42.3383, lng: -71.0892 },
-  { name: "White Hall", lat: 42.3420, lng: -71.0905 },
-  { name: "West Village F", lat: 42.3373, lng: -71.0914 },
-  { name: "West Village G", lat: 42.3380, lng: -71.0922 },
-  { name: "West Village H", lat: 42.3388, lng: -71.0921 },
-  { name: "International Village", lat: 42.3350, lng: -71.0888 },
-  { name: "Stetson West", lat: 42.3412, lng: -71.0903 },
-  { name: "LightView", lat: 42.3371, lng: -71.0855 },
-  { name: "Speare Hall", lat: 42.3407, lng: -71.0897 },
-  { name: "Willis Hall", lat: 42.3382, lng: -71.0913 },
-  { name: "Smith Hall", lat: 42.3425, lng: -71.0906 },
-  { name: "Rubenstein Hall", lat: 42.3383, lng: -71.0935 },
-  { name: "Melvin Hall", lat: 42.3421, lng: -71.0912 },
-  { name: "Hastings Hall", lat: 42.3381, lng: -71.0908 },
-  { name: "Cabot Center", lat: 42.3393, lng: -71.0893 },
-  { name: "Marino Rec Center", lat: 42.3402, lng: -71.0903 },
-  { name: "Parsons Field", lat: 42.3374, lng: -71.1140 },
-  { name: "ISEC", lat: 42.3377, lng: -71.0870 },
-  { name: "Egan Research Center", lat: 42.3377, lng: -71.0889 },
-  { name: "Khoury College", lat: 42.3385, lng: -71.0923 },
-  { name: "East Village", lat: 42.3404, lng: -71.0869 },
-  { name: "Alumni Center", lat: 42.3377, lng: -71.0853 },
-  { name: "Ruggles MBTA", lat: 42.3371, lng: -71.0894 },
-  { name: "NEU MBTA (Green)", lat: 42.3404, lng: -71.0894 },
-  { name: "Centennial Common", lat: 42.3371, lng: -71.0905 },
-  { name: "O'Bryant Institute", lat: 42.3376, lng: -71.0913 },
-  { name: "Columbus Garage", lat: 42.3380, lng: -71.0864 },
-  { name: "Renaissance Garage", lat: 42.3363, lng: -71.0884 },
-  { name: "Stetson East", lat: 42.3414, lng: -71.0902 },
-].sort((a, b) => a.name.localeCompare(b.name));
+
 
 // --- Hide outside noise ---
 const CLEAN_STYLES = [
@@ -247,7 +195,10 @@ export default function MapPage() {
   const circleRef = useRef(null);
   const markersRef = useRef([]);
   const infoWindowRef = useRef(null);
+  const campusCenterMarkerRef = useRef(null);
 
+  const [selectedCampus, setSelectedCampus] = useState("boston");
+  const [campusBuildings, setCampusBuildings] = useState([]);
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchPin, setSearchPin] = useState(null);        // { lat, lng }
@@ -256,6 +207,29 @@ export default function MapPage() {
   const [showPanel, setShowPanel] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [selectedItem, setSelectedItem] = useState(null);
+
+  // Derived: active campus object
+  const activeCampus = CAMPUSES.find((c) => c.id === selectedCampus) ?? CAMPUSES[0];
+
+  // ---- Fetch buildings for active campus from Supabase ----
+  useEffect(() => {
+    supabase
+      .from("locations")
+      .select("name, coordinates")
+      .eq("campus", selectedCampus)
+      .order("name", { ascending: true })
+      .then(({ data }) => {
+        if (!data) return;
+        const parsed = data
+          .map((loc) => {
+            const coords = parseCoordinates(loc.coordinates);
+            if (!coords) return null;
+            return { name: loc.name, lat: coords.lat, lng: coords.lng };
+          })
+          .filter(Boolean);
+        setCampusBuildings(parsed);
+      });
+  }, [selectedCampus]);
 
   // ---- Fetch all listings with coordinates ----
   const fetchItems = useCallback(async () => {
@@ -285,13 +259,25 @@ export default function MapPage() {
   const handleRefresh = async () => {
     setRefreshing(true);
     await fetchItems();
-    // Reset map to campus center
+    // Reset map to active campus center
     if (mapInstanceRef.current) {
-      mapInstanceRef.current.panTo(CAMPUS_CENTER);
-      mapInstanceRef.current.setZoom(17);
+      mapInstanceRef.current.panTo(activeCampus.center);
+      mapInstanceRef.current.setZoom(activeCampus.zoom);
     }
     clearSearch();
     setTimeout(() => setRefreshing(false), 600);
+  };
+
+  // Pan to campus when selection changes
+  const handleCampusChange = (campusId) => {
+    setSelectedCampus(campusId);
+    setCampusBuildings([]);
+    clearSearch();
+    const campus = CAMPUSES.find((c) => c.id === campusId) ?? CAMPUSES[0];
+    if (mapInstanceRef.current) {
+      mapInstanceRef.current.panTo(campus.center);
+      mapInstanceRef.current.setZoom(campus.zoom);
+    }
   };
 
   // ---- Claim handler ----
@@ -310,8 +296,8 @@ export default function MapPage() {
       if (cancelled || !mapRef.current) return;
 
       const map = new Map(mapRef.current, {
-        center: CAMPUS_CENTER,
-        zoom: 16,
+        center: CAMPUSES[0].center,
+        zoom: CAMPUSES[0].zoom,
         disableDefaultUI: true,
         zoomControl: true,
         gestureHandling: "greedy",
@@ -454,6 +440,62 @@ export default function MapPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchPin, nearbyItems]);
 
+  // ---- Campus center marker (red dot + label) ----
+  useEffect(() => {
+    const campus = CAMPUSES.find((c) => c.id === selectedCampus) ?? CAMPUSES[0];
+
+    // Wait for map to be ready, then place/move the marker
+    const place = async () => {
+      // Poll until the map instance is available
+      let attempts = 0;
+      while (!mapInstanceRef.current && attempts < 30) {
+        await new Promise((r) => setTimeout(r, 200));
+        attempts++;
+      }
+      if (!mapInstanceRef.current) return;
+
+      const { AdvancedMarkerElement } = await importLibrary("marker");
+
+      // Remove old campus center marker
+      if (campusCenterMarkerRef.current) {
+        campusCenterMarkerRef.current.map = null;
+        campusCenterMarkerRef.current = null;
+      }
+
+      // Build the visual element: red circle + name label
+      const el = document.createElement("div");
+      el.style.cssText = "display:flex;flex-direction:column;align-items:center;";
+      el.innerHTML = `
+        <svg width="18" height="18" viewBox="0 0 18 18">
+          <circle cx="9" cy="9" r="8" fill="#CC0000" stroke="#fff" stroke-width="2"/>
+        </svg>
+        <span style="
+          margin-top:3px;
+          background:rgba(204,0,0,0.85);
+          color:#fff;
+          font-size:10px;
+          font-weight:800;
+          font-family:sans-serif;
+          padding:1px 5px;
+          border-radius:4px;
+          white-space:nowrap;
+          letter-spacing:0.3px;
+          box-shadow:0 1px 3px rgba(0,0,0,0.35);
+        ">${campus.name}</span>
+      `;
+
+      campusCenterMarkerRef.current = new AdvancedMarkerElement({
+        map: mapInstanceRef.current,
+        position: campus.center,
+        content: el,
+        title: campus.name,
+        zIndex: 1000,
+      });
+    };
+
+    place();
+  }, [selectedCampus]);
+
   // ---- Filter nearby items when pin or radius changes ----
   useEffect(() => {
     if (!searchPin) {
@@ -477,6 +519,40 @@ export default function MapPage() {
   return (
     <Box sx={{ display: "flex", justifyContent: "center", width: "100%", p: 3 }}>
       <Box sx={{ width: "100%", maxWidth: 1200 }}>
+        {/* Campus selector */}
+        <Box
+          sx={{
+            display: "flex", gap: 0.6, flexWrap: "nowrap", mb: 1.5,
+            pb: 1.5, borderBottom: "1.5px solid #f0e8e8",
+            justifyContent: "center",
+          }}
+        >
+          {CAMPUSES.map((campus) => (
+            <Chip
+              key={campus.id}
+              label={`${campus.name}, ${campus.state}`}
+              onClick={() => handleCampusChange(campus.id)}
+              variant={selectedCampus === campus.id ? "filled" : "outlined"}
+              sx={{
+                fontWeight: 700,
+                fontSize: 11,
+                height: 26,
+                cursor: "pointer",
+                flexShrink: 1,
+                "& .MuiChip-label": { px: 1 },
+                borderColor: selectedCampus === campus.id ? "#A84D48" : "#e0d0d0",
+                background: selectedCampus === campus.id ? "#A84D48" : "transparent",
+                color: selectedCampus === campus.id ? "#fff" : "#7a5050",
+                "&:hover": {
+                  background: selectedCampus === campus.id ? "#8f3e3a" : "#fdf0f0",
+                  borderColor: "#A84D48",
+                },
+                transition: "all 0.15s",
+              }}
+            />
+          ))}
+        </Box>
+
         {/* Header */}
         <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 2 }}>
           <Typography variant="h4" fontWeight={900}>
@@ -518,7 +594,7 @@ export default function MapPage() {
             elevation={3}
             sx={{
               flex: 1,
-              height: { xs: "50vh", md: "calc(100vh - 200px)" },
+              height: { xs: "50vh", md: "calc(100vh - 270px)" },
               minHeight: 400,
               overflow: "hidden",
               borderRadius: 3,
@@ -532,10 +608,16 @@ export default function MapPage() {
             )}
             <Box ref={mapRef} sx={{ width: "100%", height: "100%" }} />
 
-            {/* Building search dropdown */}
+            {/* Building search — filtered to the selected campus */}
             <Autocomplete
-              options={BUILDINGS}
+              key={selectedCampus}
+              options={campusBuildings}
               getOptionLabel={(o) => o.name}
+              noOptionsText={
+                campusBuildings.length === 0
+                  ? "No buildings yet — add CSV to Supabase"
+                  : "No match"
+              }
               onChange={(_, val) => {
                 if (val && mapInstanceRef.current) {
                   mapInstanceRef.current.panTo({ lat: val.lat, lng: val.lng });
@@ -545,7 +627,7 @@ export default function MapPage() {
               renderInput={(params) => (
                 <TextField
                   {...params}
-                  placeholder="Search buildings..."
+                  placeholder={campusBuildings.length ? "Search buildings…" : `No buildings for ${activeCampus.name} yet`}
                   size="small"
                   InputProps={{
                     ...params.InputProps,
@@ -565,39 +647,7 @@ export default function MapPage() {
                   }}
                 />
               )}
-              sx={{ position: "absolute", top: 12, left: 12, width: 250, zIndex: 10 }}
-            />
-
-            {/* Building search dropdown */}
-            <Autocomplete
-              options={BUILDINGS}
-              getOptionLabel={(o) => o.name}
-              onChange={(_, val) => {
-                if (val && mapInstanceRef.current) {
-                  mapInstanceRef.current.panTo({ lat: val.lat, lng: val.lng });
-                  mapInstanceRef.current.setZoom(18);
-                }
-              }}
-              renderInput={(params) => (
-                <TextField
-                  {...params}
-                  placeholder="Search buildings..."
-                  size="small"
-                  sx={{
-                    "& .MuiOutlinedInput-root": {
-                      background: "rgba(255,255,255,0.92)",
-                      backdropFilter: "blur(8px)",
-                      borderRadius: 2,
-                      fontWeight: 700,
-                      fontSize: 13,
-                      "& fieldset": { borderColor: "#ecdcdc" },
-                      "&:hover fieldset": { borderColor: "#A84D48" },
-                      "&.Mui-focused fieldset": { borderColor: "#A84D48" },
-                    },
-                  }}
-                />
-              )}
-              sx={{ position: "absolute", top: 12, left: 12, width: 260, zIndex: 10 }}
+              sx={{ position: "absolute", top: 12, left: 12, width: 270, zIndex: 10 }}
             />
 
             {/* Instruction overlay */}
@@ -626,7 +676,7 @@ export default function MapPage() {
               elevation={2}
               sx={{
                 width: 320, p: 2.5, borderRadius: 3,
-                height: { xs: "auto", md: "calc(100vh - 200px)" },
+                height: { xs: "auto", md: "calc(100vh - 270px)" },
                 overflowY: "auto",
                 border: "1.5px solid #ecdcdc",
               }}
