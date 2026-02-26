@@ -13,6 +13,7 @@ import MapIcon from "@mui/icons-material/PinDrop";
 import { supabase } from "../supabaseClient";
 import { useAuth } from "../AuthContext";
 import MapPinPicker from "../components/MapPinPicker";
+import { CAMPUSES } from "../constants/campuses";
 
 // --- Constants ---
 const CATEGORIES = ["All", "Husky Card", "Jacket", "Wallet/Purse", "Bag", "Keys", "Electronics", "Other"];
@@ -294,10 +295,11 @@ function DetailModal({ item, onClose, onClaim }) {
   );
 }
 
-// --- NewItemModal: Building auto-places pin, user can drag to adjust ---
+// --- NewItemModal: Campus → Building selection, auto-places map pin ---
 function NewItemModal({ open, onClose, onAdd }) {
   const { user, profile } = useAuth();
   const [locations, setLocations] = useState([]);
+  const [selectedCampus, setSelectedCampus] = useState("boston");
   const [form, setForm] = useState({
     title: "", category: "Other", location_id: "", found_at: "",
     importance: 2, description: "", image: null, pin: null,
@@ -308,12 +310,27 @@ function NewItemModal({ open, onClose, onAdd }) {
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
   const valid = form.title.trim() && form.found_at.trim() && form.description.trim() && form.location_id;
 
+  // Re-fetch buildings whenever the modal opens OR the selected campus changes.
   useEffect(() => {
     if (!open) return;
-    supabase.from("locations").select("location_id, name, coordinates").order("name", { ascending: true }).then(({ data }) => {
-      if (data) setLocations(data);
-    });
-  }, [open]);
+    supabase
+      .from("locations")
+      .select("location_id, name, coordinates")
+      .eq("campus", selectedCampus)
+      .order("name", { ascending: true })
+      .then(({ data }) => {
+        if (data) setLocations(data);
+      });
+  }, [open, selectedCampus]);
+
+  // Switch campus: reset building + map pin
+  const handleCampusChange = (campusId) => {
+    setSelectedCampus(campusId);
+    set("location_id", "");
+    set("pin", null);
+    setFlyTo(null);
+    setShowMap(false);
+  };
 
   // When user selects a building, auto-place pin at its coordinates
   const handleBuildingChange = (location_id) => {
@@ -385,6 +402,7 @@ function NewItemModal({ open, onClose, onAdd }) {
       setForm({ title: "", category: "Other", location_id: "", found_at: "", importance: 2, description: "", image: null, pin: null });
       setShowMap(false);
       setFlyTo(null);
+      setSelectedCampus("boston");
     }
   };
 
@@ -402,7 +420,39 @@ function NewItemModal({ open, onClose, onAdd }) {
 
         <TextField label="Item Name" value={form.title} onChange={e => set("title", e.target.value)} placeholder="e.g. Blue Husky Card" fullWidth sx={{ mb: 2 }} />
 
-        <Box sx={{ display: "flex", gap: 1.5, mb: 2 }}>
+        {/* Step 1 — Campus chips */}
+        <Box sx={{ mb: 0.5 }}>
+          <Typography variant="caption" fontWeight={700} color="text.secondary" sx={{ display: "block", mb: 0.75 }}>
+            Campus
+          </Typography>
+          <Box sx={{ display: "flex", gap: 0.75, flexWrap: "wrap" }}>
+            {CAMPUSES.map(c => (
+              <Chip
+                key={c.id}
+                label={`${c.name}, ${c.state}`}
+                onClick={() => handleCampusChange(c.id)}
+                variant={selectedCampus === c.id ? "filled" : "outlined"}
+                size="small"
+                sx={{
+                  fontWeight: 700,
+                  fontSize: 11,
+                  cursor: "pointer",
+                  borderColor: selectedCampus === c.id ? "#A84D48" : "#e0d0d0",
+                  background: selectedCampus === c.id ? "#A84D48" : "transparent",
+                  color: selectedCampus === c.id ? "#fff" : "#7a5050",
+                  "&:hover": {
+                    background: selectedCampus === c.id ? "#8f3e3a" : "#fdf0f0",
+                    borderColor: "#A84D48",
+                  },
+                  transition: "all 0.15s",
+                }}
+              />
+            ))}
+          </Box>
+        </Box>
+
+        {/* Step 2 — Category + Building (filtered by campus) */}
+        <Box sx={{ display: "flex", gap: 1.5, mb: 2, mt: 2 }}>
           <FormControl fullWidth>
             <InputLabel>Category</InputLabel>
             <Select value={form.category} label="Category" onChange={e => set("category", e.target.value)}>
@@ -410,9 +460,22 @@ function NewItemModal({ open, onClose, onAdd }) {
             </Select>
           </FormControl>
           <FormControl fullWidth>
-            <InputLabel>Building</InputLabel>
-            <Select value={form.location_id} label="Building" onChange={e => handleBuildingChange(e.target.value)}>
-              {locations.map(l => <MenuItem key={l.location_id} value={l.location_id}>{l.name}</MenuItem>)}
+            <InputLabel id="building-label">Building</InputLabel>
+            <Select
+              labelId="building-label"
+              value={form.location_id}
+              label="Building"
+              onChange={e => handleBuildingChange(e.target.value)}
+            >
+              {locations.length === 0 ? (
+                <MenuItem value="" disabled>
+                  No buildings for {CAMPUSES.find(c => c.id === selectedCampus)?.name ?? selectedCampus} yet
+                </MenuItem>
+              ) : (
+                locations.map(l => (
+                  <MenuItem key={l.location_id} value={l.location_id}>{l.name}</MenuItem>
+                ))
+              )}
             </Select>
           </FormControl>
         </Box>
