@@ -46,6 +46,12 @@ export default function LoginPage() {
         const { data, error: signUpError } = await supabase.auth.signUp({
           email,
           password,
+          options: {
+            data: {
+              first_name: firstName.trim(),
+              last_name: lastName.trim(),
+            },
+          },
         });
 
         if (signUpError) {
@@ -56,24 +62,6 @@ export default function LoginPage() {
         if (data.user && data.user.identities && data.user.identities.length === 0) {
           setError("An account with this email already exists.");
           return;
-        }
-
-        // ✅ Save first + last name to profiles table
-        if (data.user) {
-          const { error: profileErr } = await supabase.from("profiles").upsert(
-            {
-              id: data.user.id,
-              first_name: firstName.trim(),
-              last_name: lastName.trim(),
-            },
-            { onConflict: "id" }
-          );
-
-          if (profileErr) {
-            console.error("Profile insert error:", profileErr);
-            setError("Account created, but failed to save name. Please try logging in again.");
-            return;
-          }
         }
 
         setMessage("Account created! Check your Northeastern email for a verification link.");
