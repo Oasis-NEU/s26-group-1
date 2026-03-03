@@ -13,6 +13,7 @@ import ListIcon from "@mui/icons-material/ViewList";
 import SearchIcon from "@mui/icons-material/Search";
 import { supabase } from "../supabaseClient";
 import { CAMPUSES } from "../constants/campuses";
+import { removeExpiredUnresolvedListings } from "../utils/listingExpiry";
 
 setOptions({
   key: import.meta.env.VITE_GOOGLE_MAPS_API_KEY,
@@ -234,6 +235,8 @@ export default function MapPage() {
   // ---- Fetch all listings with coordinates ----
   const fetchItems = useCallback(async () => {
     setLoading(true);
+    await removeExpiredUnresolvedListings();
+
     const { data, error } = await supabase
       .from("listings")
       .select("*, locations(name, coordinates)")
