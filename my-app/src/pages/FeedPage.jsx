@@ -30,18 +30,12 @@ function formatDate(d) {
   return `${diff} days ago`;
 }
 
-/**
- * Parse coordinate strings like "42.3391° N 71.0898° W" into { lat, lng }.
- * Returns null if parsing fails.
- */
 function parseCoordinates(coordStr) {
   if (!coordStr || typeof coordStr !== "string") return null;
-  // Match patterns like "42.3391° N 71.0898° W" or "42.3391°N 71.0898°W"
   const match = coordStr.match(
     /([\d.]+)°?\s*([NS])\s+([\d.]+)°?\s*([EW])/i
   );
   if (!match) {
-    // Try JSON object format { lat, lng }
     try {
       const obj = typeof coordStr === "string" ? JSON.parse(coordStr) : coordStr;
       if (obj.lat != null && obj.lng != null) return { lat: Number(obj.lat), lng: Number(obj.lng) };
@@ -161,7 +155,6 @@ function DetailModal({ item, onClose, onClaim }) {
   const [claimed, setClaimed] = useState(false);
 
   if (!item) return null;
-  // Try to get coordinates from item-level lat/lng or from the location
   const pinCoords = (item.lat && item.lng)
     ? { lat: item.lat, lng: item.lng }
     : parseCoordinates(item.locations?.coordinates);
@@ -196,7 +189,6 @@ function DetailModal({ item, onClose, onClaim }) {
           {item.resolved && <Chip label="Resolved" size="small" sx={{ background: "#dcfce7", color: "#16a34a", fontWeight: 800 }} />}
         </Box>
 
-        {/* Location section with map */}
         <Paper variant="outlined" sx={{ p: 2, mb: 2, background: "#fdf7f7", borderColor: "#ecdcdc", borderRadius: 2 }}>
           <Typography variant="caption" fontWeight={800} color="#a07070" sx={{ letterSpacing: 0.5, display: "block", mb: 0.75 }}>LOCATION</Typography>
           <Typography fontWeight={700} fontSize={14}>{item.locations?.name ?? "Unknown location"}</Typography>
@@ -255,8 +247,6 @@ function DetailModal({ item, onClose, onClaim }) {
             variant="outlined"
             sx={{ borderColor: "#ecdcdc", color: "#A84D48", fontWeight: 800, borderRadius: 2, flexShrink: 0 }}
             onClick={async () => {
-              // Queries the conversations table for an existing row
-              // where listing_id = item.item_id AND participant_1 = user.id
               const { data } = await supabase
                 .from("conversations")
                 .select("id")
@@ -264,14 +254,11 @@ function DetailModal({ item, onClose, onClaim }) {
                 .eq("participant_1", user.id)
                 .maybeSingle();
 
-              // If a conversation exists, navigate to /messages?conversation=<id>
               if (data != null) {
                 navigate(`/messages?conversation=${data.id}`);
                 return;
               }
 
-              // If no conversation exists, insert a new row with
-              //         { listing_id: item.item_id, participant_1: user.id, participant_2: item.poster_id }
               else {
                 const {data: created } = await supabase
                   .from("conversations")
@@ -279,12 +266,8 @@ function DetailModal({ item, onClose, onClaim }) {
                   .select("id")
                   .single();
                   
-                // Navigate to /messages?conversation=<newly created id>
                 if (created) navigate(`/messages?conversation=${created.id}`);
               }
-
-              
-
             }}
           >
             Message
@@ -295,11 +278,11 @@ function DetailModal({ item, onClose, onClaim }) {
   );
 }
 
-// --- NewItemModal: Campus → Building selection, auto-places map pin ---
+// --- NewItemModal ---
 function NewItemModal({ open, onClose, onAdd }) {
   const { user, profile } = useAuth();
   const [locations, setLocations] = useState([]);
-  const [selectedCampus, setSelectedCampus] = useState("boston");
+  const [selectedCampus, setSelectedCampus] = useState(profile?.default_campus || "boston");
   const [form, setForm] = useState({
     title: "", category: "Other", location_id: "", found_at: "",
     importance: 2, description: "", image: null, pin: null,
@@ -310,7 +293,6 @@ function NewItemModal({ open, onClose, onAdd }) {
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
   const valid = form.title.trim() && form.found_at.trim() && form.description.trim() && form.location_id;
 
-  // Re-fetch buildings whenever the modal opens OR the selected campus changes.
   useEffect(() => {
     if (!open) return;
     supabase
@@ -323,7 +305,6 @@ function NewItemModal({ open, onClose, onAdd }) {
       });
   }, [open, selectedCampus]);
 
-  // Switch campus: reset building + map pin
   const handleCampusChange = (campusId) => {
     setSelectedCampus(campusId);
     set("location_id", "");
@@ -332,7 +313,6 @@ function NewItemModal({ open, onClose, onAdd }) {
     setShowMap(false);
   };
 
-  // When user selects a building, auto-place pin at its coordinates
   const handleBuildingChange = (location_id) => {
     set("location_id", location_id);
     const loc = locations.find((l) => l.location_id === location_id);
@@ -342,7 +322,6 @@ function NewItemModal({ open, onClose, onAdd }) {
     if (coords) {
       set("pin", coords);
       setFlyTo({ ...coords, zoom: 18 });
-      // Auto-expand the map if it's collapsed
       if (!showMap) setShowMap(true);
     }
   };
@@ -383,7 +362,6 @@ function NewItemModal({ open, onClose, onAdd }) {
       date: new Date().toISOString(),
     };
 
-    // Include lat/lng if pin was placed
     if (form.pin) {
       insertData.lat = form.pin.lat;
       insertData.lng = form.pin.lng;
@@ -392,7 +370,7 @@ function NewItemModal({ open, onClose, onAdd }) {
     const { data, error } = await supabase
       .from("listings")
       .insert([insertData])
-      .select(`*, locations(name, coordinates)`)
+      .select(`*, locations(name, coordinates, campus)`)
       .single();
 
     setSubmitting(false);
@@ -402,7 +380,7 @@ function NewItemModal({ open, onClose, onAdd }) {
       setForm({ title: "", category: "Other", location_id: "", found_at: "", importance: 2, description: "", image: null, pin: null });
       setShowMap(false);
       setFlyTo(null);
-      setSelectedCampus("boston");
+      setSelectedCampus(profile?.default_campus || "boston");
     }
   };
 
@@ -420,7 +398,7 @@ function NewItemModal({ open, onClose, onAdd }) {
 
         <TextField label="Item Name" value={form.title} onChange={e => set("title", e.target.value)} placeholder="e.g. Blue Husky Card" fullWidth sx={{ mb: 2 }} />
 
-        {/* Step 1 — Campus chips */}
+        {/* Campus chips */}
         <Box sx={{ mb: 0.5 }}>
           <Typography variant="caption" fontWeight={700} color="text.secondary" sx={{ display: "block", mb: 0.75 }}>
             Campus
@@ -434,9 +412,7 @@ function NewItemModal({ open, onClose, onAdd }) {
                 variant={selectedCampus === c.id ? "filled" : "outlined"}
                 size="small"
                 sx={{
-                  fontWeight: 700,
-                  fontSize: 11,
-                  cursor: "pointer",
+                  fontWeight: 700, fontSize: 11, cursor: "pointer",
                   borderColor: selectedCampus === c.id ? "#A84D48" : "#e0d0d0",
                   background: selectedCampus === c.id ? "#A84D48" : "transparent",
                   color: selectedCampus === c.id ? "#fff" : "#7a5050",
@@ -451,7 +427,7 @@ function NewItemModal({ open, onClose, onAdd }) {
           </Box>
         </Box>
 
-        {/* Step 2 — Category + Building (filtered by campus) */}
+        {/* Category + Building */}
         <Box sx={{ display: "flex", gap: 1.5, mb: 2, mt: 2 }}>
           <FormControl fullWidth>
             <InputLabel>Category</InputLabel>
@@ -483,11 +459,10 @@ function NewItemModal({ open, onClose, onAdd }) {
         <TextField label="Found At (specific spot)" value={form.found_at} onChange={e => set("found_at", e.target.value)} placeholder="e.g. Table near window, Room 204" fullWidth sx={{ mb: 2 }} />
         <TextField label="Description" value={form.description} onChange={e => set("description", e.target.value)} placeholder="Color, markings, contents..." multiline rows={3} fullWidth sx={{ mb: 2 }} />
 
-        {/* --- Map pin section --- */}
+        {/* Map pin */}
         <Box sx={{ mb: 2 }}>
           <Button
-            size="small"
-            startIcon={<MapIcon />}
+            size="small" startIcon={<MapIcon />}
             onClick={() => setShowMap(!showMap)}
             sx={{
               color: form.pin ? "#16a34a" : "#A84D48",
@@ -496,7 +471,7 @@ function NewItemModal({ open, onClose, onAdd }) {
             }}
           >
             {form.pin
-              ? `📍 Pin placed${form.location_id ? "" : ""} — tap to ${showMap ? "hide" : "edit"}`
+              ? `📍 Pin placed — tap to ${showMap ? "hide" : "edit"}`
               : "Drop a pin on the map (optional)"}
           </Button>
 
@@ -508,11 +483,7 @@ function NewItemModal({ open, onClose, onAdd }) {
               flyTo={flyTo}
             />
             {form.pin && (
-              <Button
-                size="small"
-                onClick={() => { set("pin", null); setFlyTo(null); }}
-                sx={{ mt: 0.5, color: "#A84D48", fontSize: 12 }}
-              >
+              <Button size="small" onClick={() => { set("pin", null); setFlyTo(null); }} sx={{ mt: 0.5, color: "#A84D48", fontSize: 12 }}>
                 Remove pin
               </Button>
             )}
@@ -549,6 +520,7 @@ function NewItemModal({ open, onClose, onAdd }) {
 
 // --- FeedPage ---
 export default function FeedPage() {
+  const { profile } = useAuth();
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
@@ -557,17 +529,19 @@ export default function FeedPage() {
   const [selected, setSelected] = useState(null);
   const [showNew, setShowNew] = useState(false);
   const [showResolved, setShowResolved] = useState(false);
+  const [selectedCampus, setSelectedCampus] = useState(profile?.default_campus || "boston");
+
+  const fetchItems = async () => {
+    setLoading(true);
+    const { data, error } = await supabase
+      .from("listings")
+      .select(`*, locations(name, coordinates, campus)`)
+      .order("date", { ascending: false });
+    if (!error) setItems(data ?? []);
+    setLoading(false);
+  };
 
   useEffect(() => {
-    const fetchItems = async () => {
-      setLoading(true);
-      const { data, error } = await supabase
-        .from("listings")
-        .select(`*, locations(name, coordinates)`)
-        .order("date", { ascending: false });
-      if (!error) setItems(data ?? []);
-      setLoading(false);
-    };
     fetchItems();
   }, []);
 
@@ -578,6 +552,7 @@ export default function FeedPage() {
   };
 
   const filtered = items
+    .filter(i => selectedCampus === "all" || i.locations?.campus === selectedCampus)
     .filter(i => showResolved || !i.resolved)
     .filter(i => category === "All" || i.category === category)
     .filter(i =>
@@ -606,7 +581,7 @@ export default function FeedPage() {
                 setLoading(true);
                 supabase
                   .from("listings")
-                  .select(`*, locations(name, coordinates)`)
+                  .select(`*, locations(name, coordinates, campus)`)
                   .order("date", { ascending: false })
                   .then(({ data, error }) => {
                     if (!error) setItems(data ?? []);
@@ -635,12 +610,28 @@ export default function FeedPage() {
           </Box>
         </Box>
 
-        <TextField
-          fullWidth placeholder="Search items, locations, descriptions..."
-          value={search} onChange={e => setSearch(e.target.value)} sx={{ mb: 2 }}
-          InputProps={{ startAdornment: <InputAdornment position="start"><SearchIcon sx={{ color: "#a07070" }} /></InputAdornment> }}
-        />
+        {/* Search + Campus filter */}
+        <Box sx={{ display: "flex", gap: 1.5, mb: 2, alignItems: "center" }}>
+          <TextField
+            fullWidth placeholder="Search items, locations, descriptions..."
+            value={search} onChange={e => setSearch(e.target.value)}
+            InputProps={{ startAdornment: <InputAdornment position="start"><SearchIcon sx={{ color: "#a07070" }} /></InputAdornment> }}
+          />
+          <FormControl size="small" sx={{ minWidth: 160, flexShrink: 0 }}>
+            <Select
+              value={selectedCampus}
+              onChange={(e) => setSelectedCampus(e.target.value)}
+              displayEmpty
+            >
+              <MenuItem value="all">All Campuses</MenuItem>
+              {CAMPUSES.map((c) => (
+                <MenuItem key={c.id} value={c.id}>{c.name}, {c.state}</MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+        </Box>
 
+        {/* Category filter chips */}
         <Box sx={{ display: "flex", gap: 1, overflowX: "auto", pb: 1, mb: 1.5 }}>
           {CATEGORIES.map(c => (
             <Chip key={c} label={c} clickable onClick={() => setCategory(c)} sx={{
