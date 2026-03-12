@@ -19,13 +19,13 @@ export default function NotFoundPage({ effectiveTheme = "light" }) {
       </Box>
       <Box sx={{
         display: "flex", justifyContent: "center", alignItems: "center",
-        minHeight: "calc(100vh - 100px)", p: 3,
+        minHeight: "calc(100dvh - 100px)", p: { xs: 1.5, sm: 3 },
         boxSizing: "border-box",
       }}>
       <Paper
         elevation={0}
         sx={{
-          p: 4, pt: 0, borderRadius: 3, textAlign: "center", maxWidth: 380,
+          p: { xs: 3, sm: 4 }, pt: 0, borderRadius: 3, textAlign: "center", maxWidth: 380, width: "100%",
           border: isDark ? "1px solid rgba(255,255,255,0.14)" : "1.5px solid #ecdcdc",
           overflow: "visible",
           boxShadow: isDark

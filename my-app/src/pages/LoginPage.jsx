@@ -283,7 +283,7 @@ export default function LoginPage({
 
       <Box
         sx={{
-          minHeight: "100vh",
+          minHeight: "100dvh",
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
@@ -509,7 +509,7 @@ export default function LoginPage({
 
                 <Box component="form" onSubmit={handleSubmit} noValidate>
                   {isSignUp && (
-                    <Box sx={{ display: "flex", gap: 1.5, mb: 1.5 }}>
+                    <Box sx={{ display: "flex", flexDirection: { xs: "column", sm: "row" }, gap: 1.5, mb: 1.5 }}>
                       <TextField
                         required
                         fullWidth

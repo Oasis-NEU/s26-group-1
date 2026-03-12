@@ -607,12 +607,13 @@ export default function FeedPage({ effectiveTheme = "light" }) {
           width: "100%",
           minHeight: "calc(100vh - 100px)",
           boxSizing: "border-box",
-          p: 3,
+          px: { xs: 1.25, sm: 2, md: 3 },
+          py: { xs: 1.25, sm: 2, md: 3 },
           color: isDark ? "#D7DADC" : "inherit",
         }}
       >
       <Box sx={{ width: "100%", maxWidth: 680 }}>
-        <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 2.5 }}>
+        <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: { xs: "flex-start", sm: "center" }, flexDirection: { xs: "column", sm: "row" }, gap: 1.25, mb: 2.5 }}>
           <Typography variant="h4" fontWeight={900}>Lost & Found Feed</Typography>
           <Box sx={{ display: "flex", gap: 1 }}>
             <Button
@@ -647,7 +648,7 @@ export default function FeedPage({ effectiveTheme = "light" }) {
         </Box>
 
         {/* Search + Campus filter */}
-        <Box sx={{ display: "flex", gap: 1.5, mb: 2, alignItems: "center" }}>
+        <Box sx={{ display: "flex", gap: 1.5, mb: 2, alignItems: "center", flexDirection: { xs: "column", sm: "row" } }}>
           <TextField
             fullWidth placeholder="Search items, locations, descriptions..."
             value={search} onChange={e => setSearch(e.target.value)}
@@ -656,7 +657,7 @@ export default function FeedPage({ effectiveTheme = "light" }) {
               sx: { background: isDark ? "#2D2D2E" : "#fff", color: isDark ? "#D7DADC" : "inherit" },
             }}
           />
-          <FormControl size="small" sx={{ minWidth: 160, flexShrink: 0 }}>
+          <FormControl size="small" sx={{ minWidth: { xs: "100%", sm: 160 }, width: { xs: "100%", sm: "auto" }, flexShrink: 0 }}>
             <Select
               value={selectedCampus}
               onChange={(e) => setSelectedCampus(e.target.value)}
@@ -684,11 +685,11 @@ export default function FeedPage({ effectiveTheme = "light" }) {
           ))}
         </Box>
 
-        <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 2 }}>
+        <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: { xs: "flex-start", sm: "center" }, flexDirection: { xs: "column", sm: "row" }, gap: 1, mb: 2 }}>
           <Typography variant="body2" color={isDark ? "#B8BABD" : "text.secondary"} fontWeight={700}>
             {filtered.length} item{filtered.length !== 1 ? "s" : ""}
           </Typography>
-          <Box sx={{ display: "flex", gap: 1, alignItems: "center" }}>
+          <Box sx={{ display: "flex", gap: 1, alignItems: "center", width: { xs: "100%", sm: "auto" }, justifyContent: { xs: "space-between", sm: "flex-end" } }}>
             <Chip
               label={showResolved ? "Hide Resolved" : "Show Resolved"}
               clickable
@@ -701,7 +702,7 @@ export default function FeedPage({ effectiveTheme = "light" }) {
                 "&:hover": { background: showResolved ? (isDark ? "#27412f" : "#bbf7d0") : isDark ? "#343536" : "#ececec" },
               }}
             />
-            <FormControl size="small" sx={{ minWidth: 150 }}>
+            <FormControl size="small" sx={{ minWidth: { xs: 140, sm: 150 } }}>
               <InputLabel>Sort by</InputLabel>
               <Select value={sort} label="Sort by" onChange={e => setSort(e.target.value)} sx={{ background: isDark ? "#2D2D2E" : "#fff" }}>
                 {SORT_OPTIONS.map(s => <MenuItem key={s} value={s}>{s}</MenuItem>)}

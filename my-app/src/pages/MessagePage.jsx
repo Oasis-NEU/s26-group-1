@@ -1,17 +1,20 @@
 import { useState, useEffect, useRef } from "react";
 import { useSearchParams } from "react-router-dom";
 import { Box, Typography, Paper, TextField, IconButton, Button } from "@mui/material";
+import useMediaQuery from "@mui/material/useMediaQuery";
 import SendIcon from "@mui/icons-material/Send";
 import ChatIcon from "@mui/icons-material/ChatBubbleOutline";
 import DeleteIcon from "@mui/icons-material/Delete";
 import WarningAmberIcon from "@mui/icons-material/WarningAmber";
 import FlagIcon from "@mui/icons-material/Flag";
+import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import ReportModal from "../components/ReportModal";
 import { supabase } from "../supabaseClient";
 import { useAuth } from "../AuthContext";
 
 export default function MessagesPage({ effectiveTheme = "light" }) {
   const isDark = effectiveTheme === "dark";
+  const isMobile = useMediaQuery("(max-width:900px)");
   const pageBg = isDark ? "#101214" : "#f9f5f4";
   const pageDot = isDark ? "rgba(255,255,255,0.07)" : "rgba(122,41,41,0.18)";
   const secondaryTextColor = isDark ? "#B8BABD" : "text.secondary";
@@ -233,7 +236,19 @@ export default function MessagesPage({ effectiveTheme = "light" }) {
           backgroundSize: "24px 24px",
         }}
       />
-      <Box sx={{ display: "flex", justifyContent: "center", width: "100%", p: 3, boxSizing: "border-box", height: "calc(100vh - 64px - 36px)", overflow: "hidden", color: isDark ? "#D7DADC" : "inherit" }}>
+      <Box
+        sx={{
+          display: "flex",
+          justifyContent: "center",
+          width: "100%",
+          px: { xs: 1.25, sm: 2, md: 3 },
+          py: { xs: 1.25, sm: 2, md: 3 },
+          boxSizing: "border-box",
+          minHeight: "calc(100dvh - 64px - 36px)",
+          overflow: { xs: "visible", md: "hidden" },
+          color: isDark ? "#D7DADC" : "inherit",
+        }}
+      >
       <Box sx={{ width: "100%", maxWidth: 900, display: "flex", flexDirection: "column", overflow: "hidden" }}>
         <Typography variant="h4" fontWeight={900} sx={{ mb: 2.5 }}>
           Messages
@@ -242,15 +257,23 @@ export default function MessagesPage({ effectiveTheme = "light" }) {
         <Paper
           elevation={2}
           sx={{
-            flex: 1, minHeight: 0, borderRadius: 3,
+            flex: 1, borderRadius: 3,
             border: isDark ? "1px solid rgba(255,255,255,0.16)" : "1.5px solid #ecdcdc", overflow: "hidden",
             background: isDark ? "#1A1A1B" : "#fff",
+            minHeight: { xs: 520, md: 0 },
           }}
         >
           <Box sx={{ display: "flex", flexDirection: "row", height: "100%" }}>
 
             {/* Left sidebar */}
-            <Box sx={{ width: "30%", borderRight: isDark ? "1px solid rgba(255,255,255,0.14)" : "1.5px solid #ecdcdc", overflowY: "auto" }}>
+            <Box
+              sx={{
+                width: { xs: "100%", md: "30%" },
+                borderRight: isDark ? "1px solid rgba(255,255,255,0.14)" : "1.5px solid #ecdcdc",
+                overflowY: "auto",
+                display: isMobile && selectedConversation ? "none" : "block",
+              }}
+            >
               {conversations.length === 0 ? (
                 <Typography variant="caption" color={mutedTextColor} fontWeight={700} sx={{ p: 2, display: "block" }}>
                   No conversations yet
@@ -287,7 +310,7 @@ export default function MessagesPage({ effectiveTheme = "light" }) {
                       className="delete-btn"
                       size="small"
                       onClick={(e) => hideConversation(convo, e)}
-                      sx={{ opacity: 0, transition: "opacity 0.15s", color: isDark ? "#818384" : "#bbb", "&:hover": { color: "#A84D48" }, ml: 1, flexShrink: 0 }}
+                      sx={{ opacity: { xs: 1, md: 0 }, transition: "opacity 0.15s", color: isDark ? "#818384" : "#bbb", "&:hover": { color: "#A84D48" }, ml: 1, flexShrink: 0 }}
                     >
                       <DeleteIcon fontSize="small" />
                     </IconButton>
@@ -297,13 +320,33 @@ export default function MessagesPage({ effectiveTheme = "light" }) {
             </Box>
 
             {/* Right panel */}
-            <Box sx={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden", minHeight: 0 }}>
+            <Box
+              sx={{
+                flex: 1,
+                display: isMobile && !selectedConversation ? "none" : "flex",
+                flexDirection: "column",
+                overflow: "hidden",
+                minHeight: 0,
+              }}
+            >
               {!selectedConversation ? (
                 <Box sx={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center" }}>
                   <Typography fontWeight={700} color={mutedTextColor}>Select a conversation</Typography>
                 </Box>
               ) : (
                 <Box sx={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden", minHeight: 0 }}>
+                  {isMobile && (
+                    <Box sx={{ px: 1.25, py: 0.75, borderBottom: isDark ? "1px solid rgba(255,255,255,0.12)" : "1px solid #ecdcdc" }}>
+                      <Button
+                        size="small"
+                        startIcon={<ArrowBackIcon fontSize="small" />}
+                        onClick={() => setSelectedConversation(null)}
+                        sx={{ color: "#A84D48", fontWeight: 700, textTransform: "none" }}
+                      >
+                        Back to conversations
+                      </Button>
+                    </Box>
+                  )}
                   {/* Safety warning + report button */}
                   <Box
                     sx={{
@@ -359,7 +402,7 @@ export default function MessagesPage({ effectiveTheme = "light" }) {
 
                       const isOwn = msg.sender_id === user.id;
                       return (
-                        <Box key={msg.id} sx={{ alignSelf: isOwn ? "flex-end" : "flex-start", maxWidth: "70%" }}>
+                        <Box key={msg.id} sx={{ alignSelf: isOwn ? "flex-end" : "flex-start", maxWidth: { xs: "85%", md: "70%" } }}>
                           <Box sx={{
                             p: "10px 14px", borderRadius: 3,
                             background: isOwn ? "#A84D48" : isDark ? "#2D2D2E" : "#f5eded",
