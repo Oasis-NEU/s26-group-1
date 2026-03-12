@@ -218,7 +218,7 @@ export default function SettingsPage({
       {/* --- Centered content --- */}
       <Box
         sx={{
-          minHeight: "calc(100vh - 100px)",
+          minHeight: "calc(100dvh - 100px)",
           boxSizing: "border-box",
           display: "flex",
           alignItems: { xs: "flex-start", md: "center" },
@@ -330,7 +330,7 @@ export default function SettingsPage({
                   </Typography>
                   {editMode ? (
                     <Box sx={{ mt: 1 }}>
-                      <Box sx={{ display: "flex", gap: 1.5, mb: 1.5 }}>
+                      <Box sx={{ display: "flex", flexDirection: { xs: "column", sm: "row" }, gap: 1.5, mb: 1.5 }}>
                         <TextField
                           label="First Name"
                           value={firstName}
@@ -346,7 +346,7 @@ export default function SettingsPage({
                           sx={{ flex: 1, borderRadius: 2, ...textFieldSx }}
                         />
                       </Box>
-                      <Box sx={{ display: "flex", gap: 1 }}>
+                      <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
                         <Button
                           variant="contained"
                           size="small"

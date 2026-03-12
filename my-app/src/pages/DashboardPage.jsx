@@ -6,6 +6,7 @@ import {
   DialogContent, DialogContentText, DialogActions,
   IconButton, Collapse, Select, MenuItem, FormControl, TextField,
 } from "@mui/material";
+import useMediaQuery from "@mui/material/useMediaQuery";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import CancelIcon from "@mui/icons-material/Cancel";
 import DeleteIcon from "@mui/icons-material/Delete";
@@ -40,9 +41,9 @@ const IMPORTANCE_COLORS = { 3: "#b91c1c", 2: "#a16207", 1: "#1d4ed8" };
 
 const DECISION_OPTIONS = [
   { value: "no_violation", label: "No Violation", color: "#16a34a", description: "Dismiss report — no action taken" },
-  { value: "violation_3", label: "Violation — 3 Day Ban", color: "#f59e0b", description: "Remove content + ban user for 3 days" },
-  { value: "violation_30", label: "Violation — 30 Day Ban", color: "#dc2626", description: "Remove content + ban user for 30 days" },
-  { value: "violation_permanent", label: "Violation — Permanent Ban", color: "#7f1d1d", description: "Remove content + permanently ban user" },
+  { value: "violation_3", label: "3 Day Ban", color: "#f59e0b", description: "Remove content + ban user for 3 days" },
+  { value: "violation_30", label: "30 Day Ban", color: "#dc2626", description: "Remove content + ban user for 30 days" },
+  { value: "violation_permanent", label: "Permanent Ban", color: "#7f1d1d", description: "Remove content + permanently ban user" },
 ];
 
 function formatDate(d) {
@@ -61,22 +62,28 @@ function formatShortDate(d) {
 }
 
 // --- Stat Card ---
-function StatCard({ icon, label, value, color, isDark = false }) {
+function StatCard({ icon, label, value, color, isDark = false, compact = false }) {
   return (
     <Paper variant="outlined" sx={{
-      p: 2.5, borderRadius: 2.5, borderColor: isDark ? "rgba(255,255,255,0.16)" : "#ecdcdc",
+      p: compact ? 1.5 : 2.5,
+      borderRadius: 2.5,
+      borderColor: isDark ? "rgba(255,255,255,0.16)" : "#ecdcdc",
       background: isDark ? "#1A1A1B" : "#fff",
-      display: "flex", alignItems: "center", gap: 2, flex: 1, minWidth: 0,
+      display: "flex",
+      alignItems: "center",
+      gap: compact ? 1.25 : 2,
+      flex: 1,
+      minWidth: 0,
     }}>
       <Box sx={{
-        width: 44, height: 44, borderRadius: 2, flexShrink: 0,
+        width: compact ? 36 : 44, height: compact ? 36 : 44, borderRadius: 2, flexShrink: 0,
         background: `${color}15`, display: "flex", alignItems: "center", justifyContent: "center",
       }}>
         {icon}
       </Box>
       <Box>
-        <Typography variant="h5" fontWeight={900} sx={{ lineHeight: 1.2 }}>{value}</Typography>
-        <Typography variant="caption" fontWeight={600} color="text.secondary">{label}</Typography>
+        <Typography variant={compact ? "h6" : "h5"} fontWeight={900} sx={{ lineHeight: 1.2 }}>{value}</Typography>
+        <Typography variant="caption" fontWeight={600} color="text.secondary" sx={{ fontSize: compact ? 10 : 12 }}>{label}</Typography>
       </Box>
     </Paper>
   );
@@ -86,7 +93,8 @@ function StatCard({ icon, label, value, color, isDark = false }) {
 function EmptySection({ icon, title, description, isDark = false }) {
   return (
     <Paper variant="outlined" sx={{
-      p: 5, borderRadius: 2.5, borderColor: isDark ? "rgba(255,255,255,0.16)" : "#ecdcdc", borderStyle: "dashed",
+      p: { xs: 3, sm: 5 }, borderRadius: 2.5,
+      borderColor: isDark ? "rgba(255,255,255,0.16)" : "#ecdcdc", borderStyle: "dashed",
       background: isDark ? "#1A1A1B" : "#fff",
       display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center",
     }}>
@@ -106,7 +114,7 @@ function EmptySection({ icon, title, description, isDark = false }) {
 function AccessDenied({ isDark = false }) {
   const navigate = useNavigate();
   return (
-    <Box sx={{ display: "flex", justifyContent: "center", alignItems: "center", minHeight: "calc(100vh - 140px)", p: 3 }}>
+    <Box sx={{ display: "flex", justifyContent: "center", alignItems: "center", minHeight: "calc(100dvh - 140px)", p: { xs: 1.5, sm: 3 } }}>
       <Paper elevation={0} sx={{ p: 4, pt: 0, borderRadius: 3, textAlign: "center", maxWidth: 380, border: isDark ? "1px solid rgba(255,255,255,0.16)" : "1.5px solid #ecdcdc", overflow: "visible", background: isDark ? "#1A1A1B" : "#fff" }}>
         <Box component="img" src="/404Image.png" alt="Lost husky" sx={{ width: "100%", maxWidth: 260, mx: "auto", display: "block", mt: -6, mb: -2 }} />
         <Typography variant="h3" fontWeight={900} sx={{ mb: 0.5, color: isDark ? "#D7DADC" : "#3d2020" }}>404</Typography>
@@ -129,13 +137,12 @@ function PostDetail({ listing, isDark = false }) {
   }
   return (
     <Paper variant="outlined" sx={{ borderRadius: 2, borderColor: isDark ? "rgba(255,255,255,0.16)" : "#ecdcdc", background: isDark ? "#232324" : "#fdf7f7", overflow: "hidden" }}>
-      {/* Image */}
       {listing.image_url && (
-        <Box component="img" src={listing.image_url} alt={listing.title} sx={{ width: "100%", height: 180, objectFit: "cover" }} />
+        <Box component="img" src={listing.image_url} alt={listing.title} sx={{ width: "100%", height: { xs: 140, sm: 180 }, objectFit: "cover" }} />
       )}
-      <Box sx={{ p: 2 }}>
+      <Box sx={{ p: { xs: 1.5, sm: 2 } }}>
         <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 0.75, flexWrap: "wrap" }}>
-          <Typography fontWeight={800} fontSize={16}>{listing.title}</Typography>
+          <Typography fontWeight={800} fontSize={{ xs: 14, sm: 16 }}>{listing.title}</Typography>
           {listing.resolved && <Chip label="Resolved" size="small" sx={{ background: isDark ? "#1f3527" : "#dcfce7", color: isDark ? "#6ee7b7" : "#16a34a", border: isDark ? "1px solid rgba(110,231,183,0.42)" : "none", fontWeight: 800, fontSize: 10 }} />}
         </Box>
         <Typography variant="caption" color="text.secondary" fontWeight={600} display="block" sx={{ mb: 0.5 }}>
@@ -172,8 +179,6 @@ function MessageThread({ reporterId, reportedUserId, isDark = false }) {
     if (!reporterId || !reportedUserId) { setLoading(false); return; }
     const fetch = async () => {
       setLoading(true);
-
-      // Find conversation between reporter and reported user
       const { data: convos } = await supabase
         .from("conversations")
         .select("id")
@@ -188,8 +193,6 @@ function MessageThread({ reporterId, reportedUserId, isDark = false }) {
       }
 
       const convoIds = convos.map((c) => c.id);
-
-      // Fetch messages from those conversations
       const { data: msgs } = await supabase
         .from("messages")
         .select("*")
@@ -199,7 +202,6 @@ function MessageThread({ reporterId, reportedUserId, isDark = false }) {
 
       setMessages(msgs || []);
 
-      // Fetch both user profiles
       const { data: profileData } = await supabase
         .from("profiles")
         .select("id, first_name, last_name")
@@ -232,15 +234,19 @@ function MessageThread({ reporterId, reportedUserId, isDark = false }) {
 
   return (
     <Paper variant="outlined" sx={{ borderRadius: 2, borderColor: isDark ? "rgba(255,255,255,0.16)" : "#ecdcdc", background: isDark ? "#232324" : "#fdf7f7", overflow: "hidden" }}>
-      <Box sx={{ px: 2, py: 1.5, borderBottom: isDark ? "1px solid rgba(255,255,255,0.12)" : "1px solid #ecdcdc", display: "flex", justifyContent: "space-between" }}>
+      <Box sx={{
+        px: { xs: 1.5, sm: 2 }, py: 1.5,
+        borderBottom: isDark ? "1px solid rgba(255,255,255,0.12)" : "1px solid #ecdcdc",
+        display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: 0.5,
+      }}>
         <Typography variant="caption" fontWeight={800} color={isDark ? "#B8BABD" : "#a07070"} sx={{ letterSpacing: 0.5 }}>
-          CONVERSATION ({messages.length} messages)
+          CONVERSATION ({messages.length})
         </Typography>
-        <Typography variant="caption" color="text.disabled" fontWeight={600}>
+        <Typography variant="caption" color="text.disabled" fontWeight={600} sx={{ fontSize: 11 }}>
           {getName(reporterId)} ↔ {getName(reportedUserId)}
         </Typography>
       </Box>
-      <Box sx={{ p: 2, maxHeight: 320, overflowY: "auto", display: "flex", flexDirection: "column", gap: 0.75 }}>
+      <Box sx={{ p: { xs: 1.5, sm: 2 }, maxHeight: 320, overflowY: "auto", display: "flex", flexDirection: "column", gap: 0.75 }}>
         {messages.map((msg) => {
           if (msg.is_system) {
             return (
@@ -253,7 +259,7 @@ function MessageThread({ reporterId, reportedUserId, isDark = false }) {
           }
           const isReported = msg.sender_id === reportedUserId;
           return (
-            <Box key={msg.id} sx={{ alignSelf: isReported ? "flex-start" : "flex-end", maxWidth: "75%" }}>
+            <Box key={msg.id} sx={{ alignSelf: isReported ? "flex-start" : "flex-end", maxWidth: { xs: "85%", sm: "75%" } }}>
               <Typography variant="caption" fontWeight={700} sx={{ color: isReported ? "#dc2626" : isDark ? "#818384" : "#666", fontSize: 10, display: "block", mb: 0.25 }}>
                 {isReported ? `⚠ ${getName(msg.sender_id)}` : getName(msg.sender_id)}
               </Typography>
@@ -292,14 +298,14 @@ function DecisionPanel({ report, onDecision, processing, isDark = false }) {
   };
 
   return (
-    <Paper variant="outlined" sx={{ p: 2, borderRadius: 2, borderColor: isDark ? "rgba(255,255,255,0.16)" : "#ecdcdc", background: isDark ? "#1A1A1B" : "#fff" }}>
+    <Paper variant="outlined" sx={{ p: { xs: 1.5, sm: 2 }, borderRadius: 2, borderColor: isDark ? "rgba(255,255,255,0.16)" : "#ecdcdc", background: isDark ? "#1A1A1B" : "#fff" }}>
       <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 1.5 }}>
         <GavelIcon sx={{ color: "#A84D48", fontSize: 20 }} />
         <Typography fontWeight={800} fontSize={14}>Make a Decision</Typography>
       </Box>
 
-      <Box sx={{ display: "flex", gap: 1.5, alignItems: "center", flexWrap: "wrap" }}>
-        <FormControl size="small" sx={{ minWidth: 260 }}>
+      <Box sx={{ display: "flex", gap: 1.5, alignItems: "stretch", flexDirection: { xs: "column", sm: "row" }, flexWrap: "wrap" }}>
+        <FormControl size="small" sx={{ minWidth: { xs: "100%", sm: 260 }, flex: { xs: 1, sm: "unset" } }}>
           <Select
             value={decision}
             onChange={(e) => setDecision(e.target.value)}
@@ -337,6 +343,7 @@ function DecisionPanel({ report, onDecision, processing, isDark = false }) {
             background: isViolation ? "#dc2626" : "#16a34a",
             "&:hover": { background: isViolation ? "#b91c1c" : "#15803d" },
             fontWeight: 700, borderRadius: 2, px: 3,
+            width: { xs: "100%", sm: "auto" },
             "&.Mui-disabled": { background: isDark ? "#3A3A3C" : "#e0e0e0", color: isDark ? "#818384" : undefined },
           }}
         >
@@ -344,7 +351,6 @@ function DecisionPanel({ report, onDecision, processing, isDark = false }) {
         </Button>
       </Box>
 
-      {/* Moderator note */}
       {isViolation && (
         <TextField
           placeholder="Reason shown to banned user (optional — defaults to report reason)"
@@ -364,11 +370,10 @@ function DecisionPanel({ report, onDecision, processing, isDark = false }) {
         </Typography>
       )}
 
-      {/* Confirmation dialog */}
       <Dialog
         open={confirmOpen}
         onClose={() => setConfirmOpen(false)}
-        PaperProps={{ sx: { background: isDark ? "#1A1A1B" : "#fff", border: isDark ? "1px solid rgba(255,255,255,0.16)" : "none", color: isDark ? "#D7DADC" : "inherit" } }}
+        PaperProps={{ sx: { background: isDark ? "#1A1A1B" : "#fff", border: isDark ? "1px solid rgba(255,255,255,0.16)" : "none", color: isDark ? "#D7DADC" : "inherit", m: 2 } }}
       >
         <DialogTitle sx={{ fontWeight: 700 }}>Confirm Violation Action</DialogTitle>
         <DialogContent>
@@ -429,7 +434,6 @@ function ReverseBanPanel({ report, onReverseBan, processing, isDark = false }) {
     return <Box sx={{ display: "flex", justifyContent: "center", p: 2 }}><CircularProgress size={18} sx={{ color: "#A84D48" }} /></Box>;
   }
 
-  // Only show if user is actually banned
   if (!banInfo?.banned_until) return null;
 
   const isPermanent = banInfo.banned_until === "9999-12-31T23:59:59+00:00" || banInfo.banned_until === "9999-12-31T23:59:59Z";
@@ -444,7 +448,7 @@ function ReverseBanPanel({ report, onReverseBan, processing, isDark = false }) {
   return (
     <>
       <Paper variant="outlined" sx={{
-        p: 2, borderRadius: 2,
+        p: { xs: 1.5, sm: 2 }, borderRadius: 2,
         borderColor: isDark ? "rgba(245,158,11,0.4)" : "#fbbf24",
         background: isDark ? "#2a2520" : "#fffbeb",
       }}>
@@ -455,8 +459,8 @@ function ReverseBanPanel({ report, onReverseBan, processing, isDark = false }) {
           </Typography>
         </Box>
 
-        <Box sx={{ display: "flex", gap: 2, alignItems: "center", flexWrap: "wrap" }}>
-          <Box sx={{ flex: 1, minWidth: 200 }}>
+        <Box sx={{ display: "flex", gap: 2, alignItems: "center", flexDirection: { xs: "column", sm: "row" } }}>
+          <Box sx={{ flex: 1, minWidth: 0, width: { xs: "100%", sm: "auto" } }}>
             <Typography variant="body2" fontWeight={700}>
               {banInfo.first_name} {banInfo.last_name}
             </Typography>
@@ -482,6 +486,7 @@ function ReverseBanPanel({ report, onReverseBan, processing, isDark = false }) {
               fontWeight: 700,
               fontSize: 12,
               borderRadius: 2,
+              width: { xs: "100%", sm: "auto" },
               "&:hover": { background: "rgba(217,119,6,0.08)", borderColor: "#b45309" },
               "&.Mui-disabled": { borderColor: isDark ? "#3A3A3C" : "#e0e0e0" },
             }}
@@ -491,11 +496,10 @@ function ReverseBanPanel({ report, onReverseBan, processing, isDark = false }) {
         </Box>
       </Paper>
 
-      {/* Confirmation dialog */}
       <Dialog
         open={confirmOpen}
         onClose={() => setConfirmOpen(false)}
-        PaperProps={{ sx: { background: isDark ? "#1A1A1B" : "#fff", border: isDark ? "1px solid rgba(255,255,255,0.16)" : "none", color: isDark ? "#D7DADC" : "inherit" } }}
+        PaperProps={{ sx: { background: isDark ? "#1A1A1B" : "#fff", border: isDark ? "1px solid rgba(255,255,255,0.16)" : "none", color: isDark ? "#D7DADC" : "inherit", m: 2 } }}
       >
         <DialogTitle sx={{ fontWeight: 700 }}>Reverse Ban?</DialogTitle>
         <DialogContent>
@@ -539,24 +543,24 @@ function ReportCard({ report, fullListing, onUpdateStatus, onDelete, onDecision,
 
   return (
     <Paper variant="outlined" sx={{ borderRadius: 2.5, borderColor: isDark ? "rgba(255,255,255,0.16)" : "#ecdcdc", background: isDark ? "#1A1A1B" : "#fff", transition: "box-shadow 0.15s", "&:hover": { boxShadow: isDark ? "0 4px 14px rgba(0,0,0,0.35)" : "0 2px 12px rgba(168,77,72,0.1)" } }}>
-      <Box sx={{ p: 2.5 }}>
+      <Box sx={{ p: { xs: 1.75, sm: 2.5 } }}>
         {/* Header */}
-        <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 1.5 }}>
-          <Box sx={{ display: "flex", gap: 1, alignItems: "center" }}>
+        <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 1.5, flexWrap: "wrap", gap: 0.75 }}>
+          <Box sx={{ display: "flex", gap: 0.75, alignItems: "center" }}>
             <Chip label={isPost ? "Post" : "User"} size="small"
               sx={{ fontWeight: 800, fontSize: 11, background: isPost ? (isDark ? "#343536" : "#f5eded") : (isDark ? "#31283f" : "#ede8f5"), color: isPost ? "#A84D48" : isDark ? "#c4a5ff" : "#6b21a8" }} />
             <Chip label={report.status} size="small"
               sx={{ fontWeight: 700, fontSize: 11, textTransform: "capitalize", background: statusStyle.bg, color: statusStyle.color, border: `1px solid ${statusStyle.border}` }} />
           </Box>
-          <Typography variant="caption" color="text.disabled" fontWeight={600}>{formatDate(report.created_at)}</Typography>
+          <Typography variant="caption" color="text.disabled" fontWeight={600} sx={{ fontSize: 11 }}>{formatDate(report.created_at)}</Typography>
         </Box>
 
         {/* Reason */}
         <Typography variant="body2" fontWeight={700} sx={{ mb: 0.5 }}>{report.reason}</Typography>
-        {report.details && <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5, lineHeight: 1.5 }}>{report.details}</Typography>}
+        {report.details && <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5, lineHeight: 1.5, fontSize: { xs: 13, sm: 14 } }}>{report.details}</Typography>}
 
-        {/* Reporter + target */}
-        <Box sx={{ display: "flex", gap: 3, mb: 1.5, flexWrap: "wrap" }}>
+        {/* Reporter + target — stack on mobile */}
+        <Box sx={{ display: "flex", gap: { xs: 1.5, sm: 3 }, mb: 1.5, flexDirection: { xs: "column", sm: "row" } }}>
           <Box>
             <Typography variant="caption" fontWeight={700} color="text.secondary">Reported by</Typography>
             <Typography variant="body2" fontWeight={600}>
@@ -586,19 +590,16 @@ function ReportCard({ report, fullListing, onUpdateStatus, onDelete, onDecision,
         {/* Expanded content */}
         <Collapse in={expanded}>
           <Box sx={{ display: "flex", flexDirection: "column", gap: 2, mb: 1.5, mt: 1 }}>
-            {/* Show reported content */}
             {isPost ? (
               <PostDetail listing={fullListing} isDark={isDark} />
             ) : (
-                <MessageThread reporterId={report.reporter_id} reportedUserId={report.reported_user_id} isDark={isDark} />
+              <MessageThread reporterId={report.reporter_id} reportedUserId={report.reported_user_id} isDark={isDark} />
             )}
 
-            {/* Decision panel — only for pending reports */}
             {report.status === "pending" && (
               <DecisionPanel report={report} onDecision={onDecision} processing={processing} isDark={isDark} />
             )}
 
-            {/* Reverse ban panel — only for reviewed reports */}
             {report.status === "reviewed" && (
               <ReverseBanPanel report={report} onReverseBan={onReverseBan} processing={processing} isDark={isDark} />
             )}
@@ -606,7 +607,11 @@ function ReportCard({ report, fullListing, onUpdateStatus, onDelete, onDecision,
         </Collapse>
 
         {/* Quick actions */}
-        <Box sx={{ display: "flex", gap: 1, pt: 1.5, borderTop: isDark ? "1px solid rgba(255,255,255,0.08)" : "1px solid #f0e8e8", alignItems: "center" }}>
+        <Box sx={{
+          display: "flex", gap: { xs: 0.5, sm: 1 }, pt: 1.5,
+          borderTop: isDark ? "1px solid rgba(255,255,255,0.08)" : "1px solid #f0e8e8",
+          alignItems: "center", flexWrap: "wrap",
+        }}>
           {report.status === "pending" && (
             <>
               <Button size="small" startIcon={<CheckCircleIcon sx={{ fontSize: 16 }} />}
@@ -642,6 +647,7 @@ function ReportCard({ report, fullListing, onUpdateStatus, onDelete, onDecision,
 // ============================================================
 export default function DashboardPage({ effectiveTheme = "light" }) {
   const isDark = effectiveTheme === "dark";
+  const isMobile = useMediaQuery("(max-width:600px)");
   const { profile } = useAuth();
   const navigate = useNavigate();
 
@@ -707,7 +713,6 @@ export default function DashboardPage({ effectiveTheme = "light" }) {
     setDeleteTarget(null);
   };
 
-  // --- Core decision handler ---
   const handleDecision = async (report, decision, modNote) => {
     setProcessing(true);
     setActionError("");
@@ -715,28 +720,24 @@ export default function DashboardPage({ effectiveTheme = "light" }) {
     const isPost = !!report.reported_listing_id;
 
     if (decision === "no_violation") {
-      // Just dismiss the report
       await updateStatus(report.id, "dismissed");
       setProcessing(false);
       return;
     }
 
-    // Calculate ban duration
     let bannedUntil;
     if (decision === "violation_3") {
       bannedUntil = new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString();
     } else if (decision === "violation_30") {
       bannedUntil = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
     } else {
-      bannedUntil = "9999-12-31T23:59:59Z"; // permanent
+      bannedUntil = "9999-12-31T23:59:59Z";
     }
 
-    // Determine who to ban
     const banUserId = isPost
-      ? report.reportedListing?.poster_id  // ban the poster
-      : report.reported_user_id;           // ban the reported user
+      ? report.reportedListing?.poster_id
+      : report.reported_user_id;
 
-    // 1. Delete the reported content
     if (isPost && report.reported_listing_id) {
       await supabase.from("listings").delete().eq("item_id", report.reported_listing_id);
       setFullListings((prev) => {
@@ -745,7 +746,6 @@ export default function DashboardPage({ effectiveTheme = "light" }) {
         return copy;
       });
     } else if (!isPost && report.reporter_id && report.reported_user_id) {
-      // Delete messages in conversations between reporter and reported user
       const { data: convos } = await supabase
         .from("conversations")
         .select("id")
@@ -760,7 +760,6 @@ export default function DashboardPage({ effectiveTheme = "light" }) {
       }
     }
 
-    // 2. Ban the user
     if (banUserId) {
       const banLabel = decision === "violation_3" ? "3-day ban" : decision === "violation_30" ? "30-day ban" : "Permanent ban";
       const banReason = modNote
@@ -775,14 +774,12 @@ export default function DashboardPage({ effectiveTheme = "light" }) {
         .eq("id", banUserId);
     }
 
-    // 3. Mark this report and all related reports as reviewed
     const relatedReports = reports.filter((r) =>
       (isPost && r.reported_listing_id === report.reported_listing_id) ||
       (!isPost && r.reported_user_id === report.reported_user_id)
     );
     const relatedIds = relatedReports.map((r) => r.id);
-    
-    // Batch update in DB
+
     const { error: statusError } = await supabase
       .from("reports")
       .update({ status: "reviewed" })
@@ -794,19 +791,16 @@ export default function DashboardPage({ effectiveTheme = "light" }) {
       return;
     }
 
-    // Update local state
     setReports((prev) =>
       prev.map((r) =>
         relatedIds.includes(r.id) ? { ...r, status: "reviewed" } : r
       )
     );
 
-    // Switch to reviewed tab so moderator sees the result
     setReportTab("reviewed");
     setProcessing(false);
   };
 
-  // --- Reverse ban handler ---
   const handleReverseBan = async (report) => {
     setProcessing(true);
     setActionError("");
@@ -822,7 +816,6 @@ export default function DashboardPage({ effectiveTheme = "light" }) {
       return;
     }
 
-    // 1. Clear the ban on the user's profile
     const { error: unbanError } = await supabase
       .from("profiles")
       .update({ banned_until: null, ban_reason: null })
@@ -834,7 +827,6 @@ export default function DashboardPage({ effectiveTheme = "light" }) {
       return;
     }
 
-    // 2. Move the report back to pending so it can be re-evaluated
     await updateStatus(report.id, "pending");
     setReportTab("pending");
     setProcessing(false);
@@ -857,49 +849,117 @@ export default function DashboardPage({ effectiveTheme = "light" }) {
   const sections = [
     { id: "reports", label: "Reports", icon: <FlagIcon sx={{ fontSize: 18 }} /> },
     { id: "feedback", label: "Feedback", icon: <FeedbackIcon sx={{ fontSize: 18 }} /> },
-    { id: "bugs", label: "Bug Reports", icon: <BugReportIcon sx={{ fontSize: 18 }} /> },
+    { id: "bugs", label: "Bugs", icon: <BugReportIcon sx={{ fontSize: 18 }} /> },
   ];
 
   return (
-    <Box sx={{ display: "flex", justifyContent: "center", width: "100%", p: 3, color: isDark ? "#D7DADC" : "inherit" }}>
+    <Box sx={{
+      display: "flex", justifyContent: "center", width: "100%",
+      px: { xs: 1, sm: 2, md: 3 },
+      py: { xs: 1, sm: 2, md: 3 },
+      color: isDark ? "#D7DADC" : "inherit",
+    }}>
       <Box sx={{ width: "100%", maxWidth: 960 }}>
-        <Box sx={{ display: "flex", alignItems: "center", gap: 2, mb: 0.5 }}>
-          <Box sx={{ width: 44, height: 44, borderRadius: 2, background: isDark ? "rgba(255,255,255,0.08)" : "#A84D4815", display: "flex", alignItems: "center", justifyContent: "center" }}>
-            <ShieldIcon sx={{ color: "#A84D48", fontSize: 24 }} />
+
+        {/* ====== Header ====== */}
+        <Box sx={{
+          display: "flex",
+          alignItems: { xs: "flex-start", sm: "center" },
+          flexDirection: { xs: "column", sm: "row" },
+          gap: { xs: 1.25, sm: 2 },
+          mb: 0.5,
+        }}>
+          <Box sx={{
+            width: { xs: 36, sm: 44 }, height: { xs: 36, sm: 44 }, borderRadius: 2, flexShrink: 0,
+            background: isDark ? "rgba(255,255,255,0.08)" : "#A84D4815",
+            display: "flex", alignItems: "center", justifyContent: "center",
+          }}>
+            <ShieldIcon sx={{ color: "#A84D48", fontSize: { xs: 20, sm: 24 } }} />
           </Box>
           <Box>
-            <Typography variant="h4" fontWeight={900}>Moderation Dashboard</Typography>
-            <Typography variant="body2" color="text.secondary">Manage reports, feedback, and platform health.</Typography>
+            <Typography variant={isMobile ? "h5" : "h4"} fontWeight={900}>Moderation Dashboard</Typography>
+            <Typography variant="body2" color="text.secondary" sx={{ fontSize: { xs: 12, sm: 14 } }}>
+              Manage reports, feedback, and platform health.
+            </Typography>
           </Box>
         </Box>
 
-        <Box sx={{ display: "flex", gap: 2, my: 3, flexWrap: "wrap" }}>
-          <StatCard icon={<FlagIcon sx={{ color: "#f59e0b", fontSize: 22 }} />} label="Pending" value={counts.pending} color="#f59e0b" isDark={isDark} />
-          <StatCard icon={<ArticleIcon sx={{ color: "#A84D48", fontSize: 22 }} />} label="Post Reports" value={postReports} color="#A84D48" isDark={isDark} />
-          <StatCard icon={<PeopleIcon sx={{ color: "#6b21a8", fontSize: 22 }} />} label="User Reports" value={userReports} color="#6b21a8" isDark={isDark} />
-          <StatCard icon={<CheckCircleIcon sx={{ color: "#16a34a", fontSize: 22 }} />} label="Reviewed" value={counts.reviewed} color="#16a34a" isDark={isDark} />
+        {/* ====== Stat Cards — 2x2 grid on mobile, 4-col on desktop ====== */}
+        <Box sx={{
+          display: "grid",
+          gridTemplateColumns: { xs: "1fr 1fr", sm: "repeat(4, 1fr)" },
+          gap: { xs: 1, sm: 2 },
+          my: { xs: 2, sm: 3 },
+        }}>
+          <StatCard icon={<FlagIcon sx={{ color: "#f59e0b", fontSize: isMobile ? 18 : 22 }} />} label="Pending" value={counts.pending} color="#f59e0b" isDark={isDark} compact={isMobile} />
+          <StatCard icon={<ArticleIcon sx={{ color: "#A84D48", fontSize: isMobile ? 18 : 22 }} />} label="Post Reports" value={postReports} color="#A84D48" isDark={isDark} compact={isMobile} />
+          <StatCard icon={<PeopleIcon sx={{ color: "#6b21a8", fontSize: isMobile ? 18 : 22 }} />} label="User Reports" value={userReports} color="#6b21a8" isDark={isDark} compact={isMobile} />
+          <StatCard icon={<CheckCircleIcon sx={{ color: "#16a34a", fontSize: isMobile ? 18 : 22 }} />} label="Reviewed" value={counts.reviewed} color="#16a34a" isDark={isDark} compact={isMobile} />
         </Box>
 
-        <Box sx={{ display: "flex", gap: 1, mb: 3, borderBottom: isDark ? "1px solid rgba(255,255,255,0.12)" : "1.5px solid #f0e8e8", pb: 1.5 }}>
+        {/* ====== Section tabs ====== */}
+        <Box sx={{
+          display: "flex", gap: { xs: 0.5, sm: 1 }, mb: { xs: 2, sm: 3 },
+          borderBottom: isDark ? "1px solid rgba(255,255,255,0.12)" : "1.5px solid #f0e8e8",
+          pb: 1.5, overflowX: "auto",
+          "&::-webkit-scrollbar": { height: 4 },
+        }}>
           {sections.map((s) => (
             <Button key={s.id} startIcon={s.icon} onClick={() => setSection(s.id)}
-              sx={{ fontWeight: 700, fontSize: 13, textTransform: "none", color: section === s.id ? "#A84D48" : isDark ? "#818384" : "#999", background: section === s.id ? "#A84D4810" : "transparent", borderRadius: 2, px: 2, "&:hover": { background: section === s.id ? "#A84D4818" : isDark ? "#343536" : "#f5f5f5" } }}>
+              sx={{
+                fontWeight: 700, fontSize: { xs: 12, sm: 13 }, textTransform: "none",
+                color: section === s.id ? "#A84D48" : isDark ? "#818384" : "#999",
+                background: section === s.id ? "#A84D4810" : "transparent",
+                borderRadius: 2, px: { xs: 1.25, sm: 2 }, flexShrink: 0,
+                minWidth: 0,
+                "&:hover": { background: section === s.id ? "#A84D4818" : isDark ? "#343536" : "#f5f5f5" },
+              }}>
               {s.label}
             </Button>
           ))}
         </Box>
 
+        {/* ====== Reports section ====== */}
         {section === "reports" && (
           <>
             {actionError && <Alert severity="error" sx={{ mb: 2 }}>{actionError}</Alert>}
-            <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 2 }}>
-              <Tabs value={reportTab} onChange={(_, v) => setReportTab(v)}
-                sx={{ "& .MuiTab-root": { fontWeight: 700, textTransform: "none", minHeight: 36, fontSize: 13 }, "& .Mui-selected": { color: "#A84D48" }, "& .MuiTabs-indicator": { backgroundColor: "#A84D48" } }}>
+
+            <Box sx={{
+              display: "flex", justifyContent: "space-between",
+              alignItems: { xs: "stretch", sm: "center" },
+              flexDirection: { xs: "column", sm: "row" },
+              gap: 1, mb: 2,
+            }}>
+              <Tabs
+                value={reportTab}
+                onChange={(_, v) => setReportTab(v)}
+                variant="scrollable"
+                allowScrollButtonsMobile
+                sx={{
+                  minHeight: { xs: 32, sm: 36 },
+                  "& .MuiTab-root": {
+                    fontWeight: 700, textTransform: "none",
+                    minHeight: { xs: 32, sm: 36 },
+                    fontSize: { xs: 12, sm: 13 },
+                    px: { xs: 1.25, sm: 2 },
+                  },
+                  "& .Mui-selected": { color: "#A84D48" },
+                  "& .MuiTabs-indicator": { backgroundColor: "#A84D48" },
+                }}
+              >
                 <Tab value="pending" label={`Pending (${counts.pending})`} />
                 <Tab value="reviewed" label={`Reviewed (${counts.reviewed})`} />
                 <Tab value="dismissed" label={`Dismissed (${counts.dismissed})`} />
               </Tabs>
-              <Button size="small" startIcon={<RefreshIcon sx={{ fontSize: 16 }} />} onClick={fetchReports} disabled={loading} sx={{ color: "#A84D48", fontWeight: 700, fontSize: 12 }}>Refresh</Button>
+              <Button
+                size="small"
+                startIcon={<RefreshIcon sx={{ fontSize: 16 }} />}
+                onClick={fetchReports}
+                disabled={loading}
+                sx={{ color: "#A84D48", fontWeight: 700, fontSize: 12, alignSelf: { xs: "flex-end", sm: "center" } }}
+              >
+                Refresh
+              </Button>
             </Box>
 
             {loading ? (
@@ -930,7 +990,7 @@ export default function DashboardPage({ effectiveTheme = "light" }) {
         )}
       </Box>
 
-      <Dialog open={!!deleteTarget} onClose={() => setDeleteTarget(null)} PaperProps={{ sx: { background: isDark ? "#1A1A1B" : "#fff", border: isDark ? "1px solid rgba(255,255,255,0.16)" : "none" } }}>
+      <Dialog open={!!deleteTarget} onClose={() => setDeleteTarget(null)} PaperProps={{ sx: { background: isDark ? "#1A1A1B" : "#fff", border: isDark ? "1px solid rgba(255,255,255,0.16)" : "none", m: 2 } }}>
         <DialogTitle sx={{ fontWeight: 700 }}>Delete this report?</DialogTitle>
         <DialogContent><DialogContentText>This will permanently remove the report. This cannot be undone.</DialogContentText></DialogContent>
         <DialogActions sx={{ px: 3, pb: 2 }}>

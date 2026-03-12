@@ -22,12 +22,14 @@ import BrightnessAutoIcon from '@mui/icons-material/BrightnessAuto';
 import LogoutIcon from '@mui/icons-material/Logout';
 import MessageIcon from '@mui/icons-material/Message';
 import SupervisorAccountIcon from '@mui/icons-material/SupervisorAccount';
+import useMediaQuery from '@mui/material/useMediaQuery';
 import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
 
 // --- App: Main application component with routing and navigation ---
 export default function App() {
   const { user, profile, logout } = useAuth();
   const darkBg = "#101214";
+  const isCompactNav = useMediaQuery("(max-width:1100px)");
 
   const [themeMode, setThemeMode] = useState(() => {
     const saved = localStorage.getItem("themeMode");
@@ -188,11 +190,18 @@ export default function App() {
           <CssBaseline />
         <>
           <AppBar position="fixed" sx={{ background: navBg, borderBottom: navBorder }}>
-            <Toolbar>
+            <Toolbar
+              sx={{
+                gap: { xs: 0.5, sm: 1 },
+                px: { xs: 1, sm: 2 },
+                overflowX: "auto",
+                "&::-webkit-scrollbar": { display: "none" },
+              }}
+            >
               <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
                 <Box component="img" src="/LostandHoundLogo.PNG" alt="Lost & Hound logo"
                   sx={{ height: 32, width: 32, objectFit: "contain", filter: "brightness(0) invert(1)" }} />
-                <Typography variant="h6" fontWeight={900} sx={{ letterSpacing: 0.5 }}>
+                <Typography variant="h6" fontWeight={900} sx={{ letterSpacing: 0.5, display: { xs: "none", sm: "block" } }}>
                   Lost &amp; Hound
                 </Typography>
               </Box>
@@ -202,11 +211,13 @@ export default function App() {
                 onClick={toggleThemeFromNav}
                 startIcon={navThemeToggle.icon}
                 disabled={navThemeToggle.disabled}
-                sx={{ mr: 1 }}
+                sx={{ mr: 0.5, minWidth: 0 }}
               >
-                {navThemeToggle.label}
+                {!isCompactNav ? navThemeToggle.label : null}
               </Button>
-              <Button color="inherit" onClick={logout} endIcon={<LogoutIcon />}>Log Out</Button>
+              <Button color="inherit" onClick={logout} endIcon={<LogoutIcon />} sx={{ minWidth: 0 }}>
+                {!isCompactNav ? "Log Out" : null}
+              </Button>
             </Toolbar>
           </AppBar>
           <Toolbar />
@@ -264,7 +275,7 @@ export default function App() {
               left: 0,
               right: 0,
               height: 36,
-              px: 3,
+              px: { xs: 1.5, sm: 3 },
               borderTop: footerBorder,
               background: footerBg,
               display: "flex",
@@ -273,8 +284,11 @@ export default function App() {
               zIndex: 1200,
             }}
           >
-            <Typography variant="caption" color="text.disabled" fontWeight={600}>
+            <Typography variant="caption" color="text.disabled" fontWeight={600} sx={{ display: { xs: "none", sm: "block" } }}>
               🐾 Lost &amp; Hound · Built by Nahom Hailemelekot, Benjamin Haillu, Liam Pulsifer, and Ryan Sinha · Oasis @ Northeastern
+            </Typography>
+            <Typography variant="caption" color="text.disabled" fontWeight={700} sx={{ display: { xs: "block", sm: "none" } }}>
+              Lost &amp; Hound · Oasis
             </Typography>
           </Box>
         </>
@@ -293,11 +307,18 @@ export default function App() {
       <CssBaseline />
     <>
     <AppBar position="fixed" sx={{ background: navBg, borderBottom: navBorder }}>
-        <Toolbar>
+        <Toolbar
+          sx={{
+            gap: { xs: 0.5, sm: 1 },
+            px: { xs: 1, sm: 2 },
+            overflowX: "auto",
+            "&::-webkit-scrollbar": { display: "none" },
+          }}
+        >
           <Box
             component={Link}
             to="/"
-            sx={{ display: "flex", alignItems: "center", gap: 1, mr: 3, textDecoration: "none", color: "inherit" }}
+            sx={{ display: "flex", alignItems: "center", gap: 1, mr: { xs: 1, sm: 2 }, textDecoration: "none", color: "inherit", flexShrink: 0 }}
           >
             <Box
               component="img"
@@ -305,7 +326,7 @@ export default function App() {
               alt="Lost & Hound logo"
               sx={{ height: 32, width: 32, objectFit: "contain", filter: "brightness(0) invert(1)" }}
             />
-            <Typography variant="h6" fontWeight={900} sx={{ letterSpacing: 0.5 }}>
+            <Typography variant="h6" fontWeight={900} sx={{ letterSpacing: 0.5, display: { xs: "none", sm: "block" } }}>
               Lost &amp; Hound
             </Typography>
           </Box>
@@ -314,26 +335,27 @@ export default function App() {
             component={Link}
             to="/"
             startIcon={<FeedIcon />}
-            sx={{ mr: 2 }}
+            sx={{ mr: { xs: 0.5, sm: 1 }, minWidth: 0 }}
           >
-            Feed
+            {!isCompactNav ? "Feed" : null}
           </Button>
           <Button
             color="inherit"
             component={Link}
             to="/map"
             startIcon={<MapIcon />}
-            sx={{ mr: 2 }}
+            sx={{ mr: { xs: 0.5, sm: 1 }, minWidth: 0 }}
           >
-            Map
+            {!isCompactNav ? "Map" : null}
           </Button>
           <Button
             color="inherit"
             component={Link}
             to="/messages"
             startIcon={<MessageIcon />}
+            sx={{ minWidth: 0 }}
           >
-            Messages
+            {!isCompactNav ? "Messages" : null}
           </Button>
           <Box sx={{ flexGrow: 1 }} />
           {profile?.is_moderator && (
@@ -346,7 +368,7 @@ export default function App() {
               <SupervisorAccountIcon />
             </Button>
           )}
-          <Typography variant="body1" sx={{ mr: 2 }}>
+          <Typography variant="body1" sx={{ mr: 1, display: { xs: "none", md: "block" } }}>
             {profile?.first_name && profile?.last_name
               ? profile.first_name + " " + profile.last_name
               : user.email}
@@ -356,25 +378,26 @@ export default function App() {
             onClick={toggleThemeFromNav}
             startIcon={navThemeToggle.icon}
             disabled={navThemeToggle.disabled}
-            sx={{ mr: 2 }}
+            sx={{ mr: { xs: 0.5, sm: 1 }, minWidth: 0 }}
           >
-            {navThemeToggle.label}
+            {!isCompactNav ? navThemeToggle.label : null}
           </Button>
           <Button
             color="inherit"
             component={Link}
             to="/settings"
             endIcon={<SettingsIcon />}
-            sx={{ mr: 2 }}
+            sx={{ mr: { xs: 0.5, sm: 1 }, minWidth: 0 }}
           >
-            Settings
+            {!isCompactNav ? "Settings" : null}
           </Button>
           <Button
             color="inherit"
             onClick={logout}
             endIcon={<LogoutIcon />}
+            sx={{ minWidth: 0 }}
           >
-            Log Out
+            {!isCompactNav ? "Log Out" : null}
           </Button>
         </Toolbar>
       </AppBar>
@@ -422,7 +445,7 @@ export default function App() {
           left: 0,
           right: 0,
           height: 36,
-          px: 3,
+          px: { xs: 1.5, sm: 3 },
           borderTop: footerBorder,
           background: footerBg,
           display: "flex",
@@ -431,8 +454,11 @@ export default function App() {
           zIndex: 1200,
         }}
       >
-        <Typography variant="caption" color="text.disabled" fontWeight={600}>
+        <Typography variant="caption" color="text.disabled" fontWeight={600} sx={{ display: { xs: "none", sm: "block" } }}>
           🐾 Lost &amp; Hound · Built by Nahom Hailemelekot, Benjamin Haillu, Liam Pulsifer, and Ryan Sinha · Oasis @ Northeastern
+        </Typography>
+        <Typography variant="caption" color="text.disabled" fontWeight={700} sx={{ display: { xs: "block", sm: "none" } }}>
+          Lost &amp; Hound · Oasis
         </Typography>
       </Box>
     </>
