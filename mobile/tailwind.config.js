@@ -1,0 +1,40 @@
+/** @type {import('tailwindcss').Config} */
+module.exports = {
+  content: [
+    "./app/**/*.{js,jsx,ts,tsx}",
+    "./components/**/*.{js,jsx,ts,tsx}",
+  ],
+  darkMode: "class",
+  presets: [require("nativewind/preset")],
+  theme: {
+    extend: {
+      colors: {
+        primary:        "#A84D48",
+        "primary-dk":   "#FF4500",
+        surface:        "#f5f0f0",
+        "surface-dk":   "#030303",
+        card:           "rgba(255,255,255,0.65)",
+        "card-dk":      "rgba(26,26,27,0.75)",
+        "card-solid":   "#ffffff",
+        "card-solid-dk":"#1A1A1B",
+        ink:            "#3d2020",
+        "ink-dk":       "#D7DADC",
+        subtext:        "#6b6b6b",
+        "subtext-dk":   "#B8BABD",
+        muted:          "#999",
+        "muted-dk":     "#818384",
+        border:         "rgba(168,77,72,0.12)",
+        "border-dk":    "rgba(255,255,255,0.1)",
+        separator:      "rgba(168,77,72,0.08)",
+        "separator-dk": "rgba(255,255,255,0.06)",
+        "input-bg":     "rgba(255,255,255,0.7)",
+        "input-bg-dk":  "rgba(45,45,46,0.8)",
+        "input-border": "rgba(168,77,72,0.18)",
+        "input-border-dk": "rgba(255,255,255,0.14)",
+        "tab-bar":      "rgba(255,255,255,0.72)",
+        "tab-bar-dk":   "rgba(26,26,27,0.85)",
+      },
+    },
+  },
+  plugins: [],
+};
