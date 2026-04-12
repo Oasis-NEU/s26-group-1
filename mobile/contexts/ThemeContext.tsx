@@ -60,10 +60,9 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   const { colorScheme, setColorScheme } = useColorScheme();
   const [themeMode, setThemeModeState] = useState<ThemeMode>("auto");
 
-  const isDark =
-    themeMode === "dark" ? true :
-    themeMode === "light" ? false :
-    colorScheme === "dark";
+  // Derive isDark solely from NativeWind's colorScheme so that both t.* inline
+  // styles and dark: NativeWind classes always update in the same render tick.
+  const isDark = colorScheme === "dark";
 
   const setThemeMode = (mode: ThemeMode) => {
     setThemeModeState(mode);

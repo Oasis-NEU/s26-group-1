@@ -59,6 +59,7 @@ export default function FeedScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [hasMore, setHasMore] = useState(false);
+  const [totalItems, setTotalItems] = useState(0);
   const [loadingMore, setLoadingMore] = useState(false);
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState("All");
@@ -79,15 +80,25 @@ export default function FeedScreen() {
     });
   }, []);
 
-  const fetchItems = useCallback(async (page = 1, append = false) => {
-    if (page === 1) setLoading(true);
-    else setLoadingMore(true);
+  const fetchItems = useCallback(async (page = 1, append = false, silent = false) => {
+    if (page === 1 && !silent) setLoading(true);
+    else if (page > 1) setLoadingMore(true);
     try {
       if (page === 1) await apiFetch("/api/listings/cleanup", { method: "POST" }).catch(() => {});
       const result = await apiFetch(`/api/listings?page=${page}&limit=10`);
       const newItems = result?.data || [];
-      setItems((prev) => append ? [...prev, ...newItems] : newItems);
+      if (append) {
+        setItems((prev) => [...prev, ...newItems]);
+      } else {
+        // Merge by id so existing items update in place rather than wiping the list
+        setItems((prev) => {
+          const prevMap = new Map(prev.map((i) => [i.item_id, i]));
+          const merged = newItems.map((i: any) => prevMap.has(i.item_id) ? { ...prevMap.get(i.item_id), ...i } : i);
+          return merged;
+        });
+      }
       setHasMore(result?.hasMore ?? false);
+      if (!append) setTotalItems(result?.total ?? 0);
       setCurrentPage(page);
     } catch (err) {
       console.error("Fetch listings error:", err);
@@ -100,7 +111,7 @@ export default function FeedScreen() {
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    await fetchItems(1, false);
+    await fetchItems(1, false, true); // silent=true: keep existing list visible while fetching
     setRefreshing(false);
   }, [fetchItems]);
 
@@ -250,7 +261,7 @@ export default function FeedScreen() {
 
       {/* Toggle filters row */}
       <View className="flex-row items-center px-4 py-1 gap-3">
-        <Text className="text-xs font-bold text-subtext dark:text-subtext-dk">{filtered.length} item{filtered.length !== 1 ? "s" : ""}</Text>
+        <Text className="text-xs font-bold text-subtext dark:text-subtext-dk">{totalItems} item{totalItems !== 1 ? "s" : ""}</Text>
         <TouchableOpacity
           onPress={() => { const c = ["all", "lost", "found"]; setListingTypeFilter(c[(c.indexOf(listingTypeFilter) + 1) % c.length]); }}
           style={{ paddingHorizontal: 12, paddingVertical: 5, borderRadius: 99, borderWidth: 1, backgroundColor: listingTypeFilter !== "all" ? t.accent : t.cardSolid, borderColor: listingTypeFilter !== "all" ? t.accent : t.cardBorder }}
