@@ -4,7 +4,7 @@ import {
   ScrollView, Image, LayoutAnimation,
 } from "react-native";
 import Slider from "@react-native-community/slider";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import MapView, { Marker, Circle, PROVIDER_GOOGLE } from "react-native-maps";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
@@ -58,6 +58,7 @@ export default function MapScreen() {
   const router = useRouter();
   const { user, profile } = useAuth();
   const { t } = useTheme();
+  const insets = useSafeAreaInsets();
   const mapRef = useRef<MapView>(null);
   const initialCampus = profile?.default_campus || "boston";
   const { items: rawItems, updateItem } = useItems();
@@ -173,8 +174,8 @@ export default function MapScreen() {
   };
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: t.bg }]} edges={["top"]}>
-      <ScreenHeader title="Map" showLogo rightIcon="settings-outline" onRightPress={() => router.push("/settings")} />
+    <SafeAreaView className="flex-1 bg-surface dark:bg-surface-dk" edges={["top"]}>
+      <ScreenHeader title="Map" showLogo />
 
       {/* Filters row */}
       <View style={{ flexDirection: "row", paddingHorizontal: 12, paddingVertical: 6, gap: 6, alignItems: "center" }}>
@@ -193,13 +194,13 @@ export default function MapScreen() {
         </TouchableOpacity>
 
         {/* Resolved toggle */}
-        <TouchableOpacity onPress={() => setShowResolved((v) => !v)} style={[styles.campusChip, { backgroundColor: showResolved ? "#1f3527" : t.cardSolid, borderColor: showResolved ? "rgba(110,231,183,0.42)" : t.cardBorder }]}>
-          <Text style={[styles.campusChipText, { color: showResolved ? "#6ee7b7" : t.muted }]}>Resolved</Text>
+        <TouchableOpacity onPress={() => setShowResolved((v) => !v)} style={[styles.campusChip, { backgroundColor: showResolved ? (t.isDark ? "#1f3527" : "rgba(16,185,129,0.1)") : t.cardSolid, borderColor: showResolved ? (t.isDark ? "rgba(110,231,183,0.42)" : "rgba(5,150,105,0.4)") : t.cardBorder }]}>
+          <Text style={[styles.campusChipText, { color: showResolved ? (t.isDark ? "#6ee7b7" : "#065f46") : t.muted }]}>Resolved</Text>
         </TouchableOpacity>
       </View>
 
       {/* Map */}
-      <View style={{ flex: 1, marginBottom: 80 }}>
+      <View style={{ flex: 1, marginBottom: insets.bottom + 80 }}>
           <MapView
             ref={mapRef}
             provider={PROVIDER_GOOGLE}
@@ -270,7 +271,7 @@ export default function MapScreen() {
 
           {/* Bottom panel — radius slider + nearby items */}
           {searchPin && (
-            <View style={[styles.panel, { backgroundColor: t.cardSolid, borderColor: t.cardBorder }]}>
+            <View className="bg-card dark:bg-card-dk rounded-t-3xl border-t border-border dark:border-border-dk" style={styles.panel}>
               {/* Radius control */}
               <View style={styles.radiusSection}>
                 <View style={styles.radiusHeader}>

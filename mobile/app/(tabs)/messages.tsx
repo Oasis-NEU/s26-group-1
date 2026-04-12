@@ -1,9 +1,9 @@
 import { useState, useEffect, useRef } from "react";
 import {
-  View, Text, TextInput, TouchableOpacity, StyleSheet,
+  View, Text, TextInput, TouchableOpacity,
   FlatList, ActivityIndicator, KeyboardAvoidingView, Platform, Alert,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useAuth } from "../../contexts/AuthContext";
@@ -23,6 +23,7 @@ export default function MessagesScreen() {
   const router = useRouter();
   const { user } = useAuth();
   const { t } = useTheme();
+  const insets = useSafeAreaInsets();
   const { timezone } = useTimezone();
   const params = useLocalSearchParams<{ conversationId?: string }>();
 
@@ -160,34 +161,34 @@ export default function MessagesScreen() {
   if (selectedConvo) {
     return (
       <>
-      <SafeAreaView style={[styles.container, { backgroundColor: t.bg, paddingBottom: 80 }]} edges={["top"]}>
-        <View style={[styles.threadHeader, { borderBottomColor: t.separator }]}>
+      <SafeAreaView style={{ flex: 1, backgroundColor: t.bg, paddingBottom: insets.bottom + 80 }} edges={["top"]}>
+        <View style={{ flexDirection: "row", alignItems: "center", paddingHorizontal: 12, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: t.separator }}>
           <TouchableOpacity onPress={() => setSelectedConvo(null)} hitSlop={12}>
             <Ionicons name="chevron-back" size={24} color={t.accent} />
           </TouchableOpacity>
           <View style={{ flex: 1, marginLeft: 8 }}>
-            <Text style={[styles.threadTitle, { color: t.text }]} numberOfLines={1}>{selectedListing?.title || "Conversation"}</Text>
-            <Text style={[styles.threadSubtitle, { color: t.subtext }]}>{otherName}</Text>
+            <Text style={{ fontSize: 15, fontWeight: "800", color: t.text }} numberOfLines={1}>{selectedListing?.title || "Conversation"}</Text>
+            <Text style={{ fontSize: 12, color: t.subtext }}>{otherName}</Text>
           </View>
           <TouchableOpacity onPress={() => setReportTarget({ id: otherId, name: otherName })} hitSlop={12}>
             <Ionicons name="flag-outline" size={20} color={t.muted} />
           </TouchableOpacity>
         </View>
 
-        <View style={[styles.safetyBanner, { backgroundColor: t.isDark ? "#3a2f22" : "#fff8e1", borderBottomColor: t.isDark ? "rgba(255,193,7,0.35)" : "#ffe082" }]}>
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 6, paddingVertical: 8, paddingHorizontal: 14, borderBottomWidth: 1, backgroundColor: t.isDark ? "#3a2f22" : "#fff8e1", borderBottomColor: t.isDark ? "rgba(255,193,7,0.35)" : "#ffe082" }}>
           <Ionicons name="warning-outline" size={14} color="#f59e0b" />
-          <Text style={[styles.safetyText, { color: t.isDark ? "#f6c66a" : "#92400e" }]}>Never share personal info. Always meet in a public place.</Text>
+          <Text style={{ fontSize: 11, fontWeight: "600", flex: 1, color: t.isDark ? "#f6c66a" : "#92400e" }}>Never share personal info. Always meet in a public place.</Text>
         </View>
 
         <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : undefined}>
           {loadingMessages ? (
-            <View style={styles.centered}><ActivityIndicator size="large" color={t.accent} /></View>
+            <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}><ActivityIndicator size="large" color={t.accent} /></View>
           ) : (
             <FlatList
               ref={flatListRef}
               data={messages}
               keyExtractor={(item) => String(item.id)}
-              contentContainerStyle={styles.messageList}
+              contentContainerStyle={{ padding: 12, gap: 4 }}
               onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: false })}
               ListHeaderComponent={msgHasMore ? (
                 <TouchableOpacity
@@ -211,17 +212,17 @@ export default function MessagesScreen() {
               ) : null}
               renderItem={({ item: msg }) => {
                 if (msg.is_system) return (
-                  <View style={[styles.systemMsg, { backgroundColor: t.inputBg }]}>
-                    <Text style={[styles.systemMsgText, { color: t.muted }]}>{msg.content}</Text>
+                  <View style={{ alignSelf: "center", borderRadius: 99, paddingHorizontal: 14, paddingVertical: 4, marginVertical: 4, backgroundColor: t.inputBg }}>
+                    <Text style={{ fontSize: 12, color: t.muted }}>{msg.content}</Text>
                   </View>
                 );
                 const isOwn = msg.sender_id === user.id;
                 return (
-                  <View style={[styles.msgRow, isOwn ? styles.msgRowOwn : styles.msgRowOther]}>
-                    <View style={[styles.msgBubble, isOwn ? { backgroundColor: t.accent } : { backgroundColor: t.cardSolid, borderWidth: 1, borderColor: t.cardBorder }]}>
-                      <Text style={[styles.msgText, { color: isOwn ? "#fff" : t.text }]}>{msg.content}</Text>
+                  <View style={{ maxWidth: "80%", marginVertical: 2, alignSelf: isOwn ? "flex-end" : "flex-start" }}>
+                    <View style={{ borderRadius: 18, paddingHorizontal: 14, paddingVertical: 10, ...(isOwn ? { backgroundColor: t.accent } : { backgroundColor: t.cardSolid, borderWidth: 1, borderColor: t.cardBorder }) }}>
+                      <Text style={{ fontSize: 14, lineHeight: 20, color: isOwn ? "#fff" : t.text }}>{msg.content}</Text>
                     </View>
-                    <Text style={[styles.msgTime, { color: t.muted }, isOwn ? { textAlign: "right" } : { textAlign: "left" }]}>{formatTime(msg.created_at, timezone)}</Text>
+                    <Text style={{ fontSize: 10, marginTop: 3, color: t.muted, textAlign: isOwn ? "right" : "left" }}>{formatTime(msg.created_at, timezone)}</Text>
                   </View>
                 );
               }}
@@ -229,13 +230,13 @@ export default function MessagesScreen() {
           )}
 
           {isClosed ? (
-            <View style={[styles.closedBanner, { borderTopColor: t.separator }]}>
-              <Text style={[styles.closedText, { color: t.muted }]}>This conversation has been closed.</Text>
+            <View style={{ padding: 14, borderTopWidth: 1, borderTopColor: t.separator, alignItems: "center" }}>
+              <Text style={{ fontWeight: "700", fontSize: 13, color: t.muted }}>This conversation has been closed.</Text>
             </View>
           ) : (
-            <View style={[styles.inputRow, { borderTopColor: t.separator, backgroundColor: t.bg }]}>
+            <View style={{ flexDirection: "row", alignItems: "flex-end", paddingHorizontal: 12, paddingVertical: 8, borderTopWidth: 1, borderTopColor: t.separator, backgroundColor: t.bg, gap: 8 }}>
               <TextInput
-                style={[styles.msgInput, { backgroundColor: t.inputBg, color: t.text, borderColor: t.inputBorder }]}
+                style={{ flex: 1, borderRadius: 20, paddingHorizontal: 16, paddingVertical: 10, fontSize: 15, maxHeight: 100, borderWidth: 1, backgroundColor: t.inputBg, color: t.text, borderColor: t.inputBorder }}
                 placeholder="Type a message..."
                 placeholderTextColor={t.muted}
                 value={newMessage}
@@ -245,7 +246,7 @@ export default function MessagesScreen() {
                 multiline
                 maxLength={MESSAGE_MAX_LENGTH}
               />
-              <TouchableOpacity onPress={sendMessage} disabled={sending || !newMessage.trim()} style={[styles.sendBtn, (!newMessage.trim() || sending) && { opacity: 0.4 }]}>
+              <TouchableOpacity onPress={sendMessage} disabled={sending || !newMessage.trim()} style={[{ width: 40, height: 40, borderRadius: 20, justifyContent: "center", alignItems: "center" }, (!newMessage.trim() || sending) && { opacity: 0.4 }]}>
                 {sending ? <ActivityIndicator size="small" color={t.accent} /> : <Ionicons name="send" size={20} color={t.accent} />}
               </TouchableOpacity>
             </View>
@@ -265,40 +266,62 @@ export default function MessagesScreen() {
 
   // ── Conversation list ──
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: t.bg, paddingBottom: 80 }]} edges={["top"]}>
-      <ScreenHeader title="Messages" showLogo rightIcon="settings-outline" onRightPress={() => router.push("/settings")} />
+    <SafeAreaView className="flex-1 bg-surface dark:bg-surface-dk" edges={["top"]}>
+      <ScreenHeader title="Messages" showLogo />
 
       {loadingConversations ? (
-        <View style={styles.centered}><ActivityIndicator size="large" color={t.accent} /></View>
+        <View className="flex-1 items-center justify-center"><ActivityIndicator size="large" color={t.accent} /></View>
       ) : conversations.length === 0 ? (
-        <View style={styles.centered}>
+        <View className="flex-1 items-center justify-center gap-3 pb-20">
           <Ionicons name="chatbubbles-outline" size={48} color={t.muted} />
-          <Text style={[styles.emptyText, { color: t.muted }]}>No conversations yet</Text>
+          <Text className="text-base font-bold text-muted dark:text-muted-dk">No conversations yet</Text>
+          <Text className="text-sm text-subtext dark:text-subtext-dk text-center px-8">
+            Start a conversation by tapping on a listing
+          </Text>
         </View>
       ) : (
         <FlatList
           data={conversations}
           keyExtractor={(item) => item.id}
-          contentContainerStyle={{ paddingBottom: 90 }}
+          contentContainerStyle={{ paddingTop: 8, paddingBottom: insets.bottom + 80 }}
           renderItem={({ item: convo }) => {
             const otherId = convo.participant_1 === user.id ? convo.participant_2 : convo.participant_1;
             const other = profiles[otherId];
             const listing = listings[convo.listing_id];
+            const initials = other
+              ? `${other.first_name?.[0] ?? ""}${other.last_name?.[0] ?? ""}`.toUpperCase()
+              : "?";
+            const unreadCount = unreadCounts[convo.id] ?? 0;
             return (
-              <TouchableOpacity style={[styles.convoItem, { borderBottomColor: t.separator }]} onPress={() => { setSelectedConvo(convo); markConversationRead(convo.id); }} onLongPress={() => hideConversation(convo)} activeOpacity={0.7}>
-                <View style={[styles.convoAvatar, { backgroundColor: t.inputBg }]}>
-                  <Ionicons name="person" size={20} color={t.muted} />
+              <TouchableOpacity
+                className="mx-4 mb-2 p-3 rounded-2xl bg-card dark:bg-card-dk border border-border dark:border-border-dk flex-row items-center gap-3"
+                onPress={() => { setSelectedConvo(convo); markConversationRead(convo.id); }}
+                onLongPress={() => hideConversation(convo)}
+                activeOpacity={0.8}
+              >
+                {/* Avatar circle with initials */}
+                <View className="w-12 h-12 rounded-full bg-separator dark:bg-separator-dk items-center justify-center">
+                  <Text className="text-base font-bold text-ink dark:text-ink-dk">{initials}</Text>
                 </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={[styles.convoTitle, { color: t.text }]} numberOfLines={1}>{listing?.title || "Unknown Listing"}</Text>
-                  <Text style={[styles.convoSubtitle, { color: t.subtext }]} numberOfLines={1}>{other ? `${other.first_name} ${other.last_name}` : "Loading..."}</Text>
+
+                {/* Content */}
+                <View className="flex-1">
+                  <Text className="text-sm font-bold text-ink dark:text-ink-dk" numberOfLines={1}>
+                    {listing?.title || "Unknown Listing"}
+                  </Text>
+                  <Text className="text-xs text-subtext dark:text-subtext-dk mt-0.5" numberOfLines={1}>
+                    {other ? `${other.first_name} ${other.last_name}` : "Loading..."}
+                  </Text>
                 </View>
-                {unreadCounts[convo.id] > 0 && (
-                  <View style={styles.unreadBadge}>
-                    <Text style={styles.unreadBadgeText}>{unreadCounts[convo.id]}</Text>
-                  </View>
-                )}
-                <Ionicons name="chevron-forward" size={18} color={t.muted} />
+
+                {/* Right: unread badge */}
+                <View className="items-end gap-1">
+                  {unreadCount > 0 && (
+                    <View className="w-5 h-5 rounded-full bg-red-500 items-center justify-center">
+                      <Text className="text-white text-xs font-bold">{unreadCount}</Text>
+                    </View>
+                  )}
+                </View>
               </TouchableOpacity>
             );
           }}
@@ -316,36 +339,3 @@ export default function MessagesScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1 },
-  header: { paddingHorizontal: 16, paddingVertical: 14, borderBottomWidth: StyleSheet.hairlineWidth },
-  headerTitle: { fontSize: 22, fontWeight: "900" },
-  centered: { flex: 1, justifyContent: "center", alignItems: "center", gap: 12 },
-  emptyText: { fontWeight: "700", fontSize: 15 },
-  convoItem: { flexDirection: "row", alignItems: "center", paddingHorizontal: 16, paddingVertical: 14, borderBottomWidth: StyleSheet.hairlineWidth, gap: 12 },
-  convoAvatar: { width: 40, height: 40, borderRadius: 20, justifyContent: "center", alignItems: "center" },
-  convoTitle: { fontSize: 14, fontWeight: "700" },
-  convoSubtitle: { fontSize: 12, marginTop: 2 },
-  unreadBadge: { minWidth: 20, height: 20, borderRadius: 10, backgroundColor: "#ef4444", justifyContent: "center", alignItems: "center", paddingHorizontal: 5, marginRight: 6 },
-  unreadBadgeText: { color: "#fff", fontSize: 11, fontWeight: "800" },
-  // Thread
-  threadHeader: { flexDirection: "row", alignItems: "center", paddingHorizontal: 12, paddingVertical: 10, borderBottomWidth: StyleSheet.hairlineWidth },
-  threadTitle: { fontSize: 15, fontWeight: "800" },
-  threadSubtitle: { fontSize: 12 },
-  safetyBanner: { flexDirection: "row", alignItems: "center", gap: 6, paddingVertical: 8, paddingHorizontal: 14, borderBottomWidth: 1 },
-  safetyText: { fontSize: 11, fontWeight: "600", flex: 1 },
-  messageList: { padding: 12, gap: 4 },
-  systemMsg: { alignSelf: "center", borderRadius: 99, paddingHorizontal: 14, paddingVertical: 4, marginVertical: 4 },
-  systemMsgText: { fontSize: 12 },
-  msgRow: { maxWidth: "80%", marginVertical: 2 },
-  msgRowOwn: { alignSelf: "flex-end" },
-  msgRowOther: { alignSelf: "flex-start" },
-  msgBubble: { borderRadius: 18, paddingHorizontal: 14, paddingVertical: 10 },
-  msgText: { fontSize: 14, lineHeight: 20 },
-  msgTime: { fontSize: 10, marginTop: 3 },
-  inputRow: { flexDirection: "row", alignItems: "flex-end", paddingHorizontal: 12, paddingVertical: 8, borderTopWidth: StyleSheet.hairlineWidth, gap: 8 },
-  msgInput: { flex: 1, borderRadius: 20, paddingHorizontal: 16, paddingVertical: 10, fontSize: 15, maxHeight: 100, borderWidth: 1 },
-  sendBtn: { width: 40, height: 40, borderRadius: 20, justifyContent: "center", alignItems: "center" },
-  closedBanner: { padding: 14, borderTopWidth: StyleSheet.hairlineWidth, alignItems: "center" },
-  closedText: { fontWeight: "700", fontSize: 13 },
-});

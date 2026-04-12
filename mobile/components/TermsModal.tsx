@@ -1,11 +1,11 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import {
-  View, Text, TouchableOpacity, StyleSheet,
-  ScrollView, Modal, NativeSyntheticEvent, NativeScrollEvent,
+  View, Text, TouchableOpacity,
+  ScrollView, NativeSyntheticEvent, NativeScrollEvent,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useTheme } from "../contexts/ThemeContext";
+import BottomSheet from "./BottomSheet";
 
 const SECTIONS = [
   { title: "1. Disclaimer", content: "Lost & Hound is a student-made project created as part of Oasis @ Northeastern University. This platform is not officially affiliated with or endorsed by Northeastern University\u2014it is an independent student initiative. Users acknowledge that Lost & Hound is maintained by students and may have limitations or changes without notice." },
@@ -50,146 +50,116 @@ export default function TermsModal({ visible, onClose, onAccept, readOnly = fals
   };
 
   return (
-    <Modal visible={visible} animationType="slide" transparent>
-      <View style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.5)" }}>
-        <SafeAreaView style={{ flex: 1, justifyContent: "center", padding: 12 }}>
-          <View style={[styles.card, { backgroundColor: t.cardSolid, borderColor: t.cardBorder }]}>
-
-            {/* Header */}
-            <View style={[styles.header, { borderBottomColor: t.separator }]}>
-              <View style={styles.headerLeft}>
-                <View style={[styles.iconBox, { backgroundColor: t.isDark ? "rgba(255,69,0,0.16)" : "rgba(168,77,72,0.08)" }]}>
-                  <Ionicons name="document-text" size={20} color={t.accent} />
-                </View>
-                <View>
-                  <Text style={[styles.headerTitle, { color: t.text }]}>Terms & Conditions</Text>
-                  <Text style={[styles.headerSubtitle, { color: t.subtext }]}>
-                    {readOnly ? "Review the full terms" : "Please read before creating your account"}
-                  </Text>
-                </View>
-              </View>
-              <TouchableOpacity onPress={onClose} hitSlop={12}>
-                <Ionicons name="close" size={22} color={t.muted} />
-              </TouchableOpacity>
-            </View>
-
-            {/* Scrollable content */}
-            <ScrollView
-              style={styles.scrollArea}
-              contentContainerStyle={styles.scrollContent}
-              onScroll={handleScroll}
-              scrollEventThrottle={16}
-              showsVerticalScrollIndicator={true}
-            >
-              <Text style={[styles.intro, { color: t.subtext }]}>
-                {readOnly
-                  ? "Welcome to Lost & Hound \u2014 a student-made lost and found platform for Northeastern University. Please review the full terms and conditions below."
-                  : "Welcome to Lost & Hound \u2014 a student-made lost and found platform for Northeastern University. By creating an account, you agree to the following terms."}
-              </Text>
-
-              {SECTIONS.map((section, i) => (
-                <View key={i} style={styles.section}>
-                  <Text style={[styles.sectionTitle, { color: t.isDark ? "#FFBEA4" : "#3d2020" }]}>
-                    {section.title}
-                  </Text>
-                  <Text style={[styles.sectionContent, { color: t.subtext }]}>
-                    {section.content}
-                  </Text>
-                  {i < SECTIONS.length - 1 && (
-                    <View style={[styles.divider, { backgroundColor: t.separator }]} />
-                  )}
-                </View>
-              ))}
-
-              <View style={[styles.noticeBox, { backgroundColor: t.isDark ? "#232324" : "#fdf7f7", borderColor: t.cardBorder }]}>
-                <Text style={[styles.noticeLabel, { color: t.subtext }]}>Last updated: March 2026</Text>
-                <Text style={[styles.noticeText, { color: t.muted }]}>If you have questions about these Terms, contact the Lost & Hound team.</Text>
-              </View>
-            </ScrollView>
-
-            {/* Footer */}
-            <View style={[styles.footer, { borderTopColor: t.separator, backgroundColor: t.isDark ? "#161617" : "#faf8f8" }]}>
-              {!readOnly && !scrolledToBottom && (
-                <Text style={[styles.scrollHint, { color: t.muted }]}>
-                  ↓ Scroll to the bottom to continue
-                </Text>
-              )}
-
-              {readOnly ? (
-                <TouchableOpacity style={[styles.acceptBtn, { backgroundColor: t.accent }]} onPress={onClose}>
-                  <Text style={styles.acceptBtnText}>Close</Text>
-                </TouchableOpacity>
-              ) : (
-                <>
-                  <TouchableOpacity
-                    style={styles.checkboxRow}
-                    onPress={() => { if (scrolledToBottom) setAccepted(!accepted); }}
-                    activeOpacity={scrolledToBottom ? 0.7 : 1}
-                  >
-                    <View style={[
-                      styles.checkbox,
-                      !scrolledToBottom && { borderColor: t.isDark ? "#4A4A4B" : "#ddd" },
-                      scrolledToBottom && { borderColor: t.accent },
-                      accepted && { backgroundColor: t.accent, borderColor: t.accent },
-                    ]}>
-                      {accepted && <Ionicons name="checkmark" size={14} color="#fff" />}
-                    </View>
-                    <Text style={[
-                      styles.checkboxLabel,
-                      { color: scrolledToBottom ? t.text : (t.isDark ? "#787A7C" : "#bbb") },
-                    ]}>
-                      I have read and agree to the Terms & Conditions
-                    </Text>
-                  </TouchableOpacity>
-
-                  <TouchableOpacity
-                    style={[
-                      styles.acceptBtn,
-                      { backgroundColor: accepted ? t.accent : (t.isDark ? "#37383A" : "#e0d6d6") },
-                    ]}
-                    onPress={() => { if (accepted) { onAccept?.(); onClose(); } }}
-                    disabled={!accepted}
-                    activeOpacity={accepted ? 0.7 : 1}
-                  >
-                    <Text style={[
-                      styles.acceptBtnText,
-                      !accepted && { color: t.isDark ? "#808285" : "#aaa" },
-                    ]}>
-                      Accept & Create Account
-                    </Text>
-                  </TouchableOpacity>
-                </>
-              )}
-            </View>
+    <BottomSheet visible={visible} onClose={onClose} heightFraction={0.85}>
+      {/* Header */}
+      <View className="flex-row items-center justify-between px-5 pb-4" style={{ borderBottomWidth: 1, borderBottomColor: t.separator }}>
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 10, flex: 1 }}>
+          <View style={{ width: 36, height: 36, borderRadius: 10, justifyContent: "center", alignItems: "center", backgroundColor: t.isDark ? "rgba(255,69,0,0.16)" : "rgba(168,77,72,0.08)" }}>
+            <Ionicons name="document-text" size={20} color={t.accent} />
           </View>
-        </SafeAreaView>
+          <View>
+            <Text style={{ fontSize: 16, fontWeight: "900", color: t.text }}>Terms & Conditions</Text>
+            <Text style={{ fontSize: 11, fontWeight: "600", color: t.subtext, marginTop: 1 }}>
+              {readOnly ? "Review the full terms" : "Please read before creating your account"}
+            </Text>
+          </View>
+        </View>
+        <TouchableOpacity onPress={onClose} hitSlop={12}>
+          <Ionicons name="close" size={22} color={t.muted} />
+        </TouchableOpacity>
       </View>
-    </Modal>
+
+      {/* Scrollable content */}
+      <ScrollView
+        style={{ flex: 1 }}
+        contentContainerStyle={{ padding: 20 }}
+        onScroll={handleScroll}
+        scrollEventThrottle={16}
+        showsVerticalScrollIndicator={true}
+      >
+        <Text style={{ fontSize: 13, lineHeight: 20, marginBottom: 16, color: t.subtext }}>
+          {readOnly
+            ? "Welcome to Lost & Hound \u2014 a student-made lost and found platform for Northeastern University. Please review the full terms and conditions below."
+            : "Welcome to Lost & Hound \u2014 a student-made lost and found platform for Northeastern University. By creating an account, you agree to the following terms."}
+        </Text>
+
+        {SECTIONS.map((section, i) => (
+          <View key={i} style={{ marginBottom: 16 }}>
+            <Text style={{ fontSize: 14, fontWeight: "800", marginBottom: 6, color: t.isDark ? "#FFBEA4" : "#3d2020" }}>
+              {section.title}
+            </Text>
+            <Text style={{ fontSize: 13, lineHeight: 20, color: t.subtext }}>
+              {section.content}
+            </Text>
+            {i < SECTIONS.length - 1 && (
+              <View style={{ height: 0.5, marginTop: 16, backgroundColor: t.separator }} />
+            )}
+          </View>
+        ))}
+
+        <View style={{ marginTop: 8, padding: 14, borderRadius: 10, borderWidth: 1, backgroundColor: t.isDark ? "#232324" : "#fdf7f7", borderColor: t.cardBorder }}>
+          <Text style={{ fontSize: 11, fontWeight: "700", marginBottom: 4, color: t.subtext }}>Last updated: March 2026</Text>
+          <Text style={{ fontSize: 11, color: t.muted }}>If you have questions about these Terms, contact the Lost & Hound team.</Text>
+        </View>
+      </ScrollView>
+
+      {/* Footer */}
+      <View style={{ paddingHorizontal: 16, paddingVertical: 12, borderTopWidth: 1, borderTopColor: t.separator, backgroundColor: t.isDark ? "#161617" : "#faf8f8" }}>
+        {!readOnly && !scrolledToBottom && (
+          <Text style={{ textAlign: "center", fontSize: 11, fontWeight: "600", marginBottom: 8, color: t.muted }}>
+            ↓ Scroll to the bottom to continue
+          </Text>
+        )}
+
+        {readOnly ? (
+          <TouchableOpacity
+            style={{ borderRadius: 12, paddingVertical: 14, alignItems: "center", backgroundColor: t.accent }}
+            onPress={onClose}
+          >
+            <Text style={{ color: "#fff", fontWeight: "700", fontSize: 15 }}>Close</Text>
+          </TouchableOpacity>
+        ) : (
+          <>
+            <TouchableOpacity
+              style={{ flexDirection: "row", alignItems: "center", gap: 10, marginBottom: 10 }}
+              onPress={() => { if (scrolledToBottom) setAccepted(!accepted); }}
+              activeOpacity={scrolledToBottom ? 0.7 : 1}
+            >
+              <View style={[
+                { width: 22, height: 22, borderRadius: 6, borderWidth: 2, justifyContent: "center", alignItems: "center" },
+                !scrolledToBottom && { borderColor: t.isDark ? "#4A4A4B" : "#ddd" },
+                scrolledToBottom && { borderColor: t.accent },
+                accepted && { backgroundColor: t.accent, borderColor: t.accent },
+              ]}>
+                {accepted && <Ionicons name="checkmark" size={14} color="#fff" />}
+              </View>
+              <Text style={[
+                { fontSize: 13, fontWeight: "600", flex: 1 },
+                { color: scrolledToBottom ? t.text : (t.isDark ? "#787A7C" : "#bbb") },
+              ]}>
+                I have read and agree to the Terms & Conditions
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[
+                { borderRadius: 12, paddingVertical: 14, alignItems: "center" },
+                { backgroundColor: accepted ? t.accent : (t.isDark ? "#37383A" : "#e0d6d6") },
+              ]}
+              onPress={() => { if (accepted) { onAccept?.(); onClose(); } }}
+              disabled={!accepted}
+              activeOpacity={accepted ? 0.7 : 1}
+            >
+              <Text style={[
+                { color: "#fff", fontWeight: "700", fontSize: 15 },
+                !accepted && { color: t.isDark ? "#808285" : "#aaa" },
+              ]}>
+                Accept & Create Account
+              </Text>
+            </TouchableOpacity>
+          </>
+        )}
+      </View>
+    </BottomSheet>
   );
 }
-
-const styles = StyleSheet.create({
-  card: { flex: 1, maxHeight: "95%", borderRadius: 20, borderWidth: 1, overflow: "hidden" },
-  header: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 16, paddingVertical: 14, borderBottomWidth: 1 },
-  headerLeft: { flexDirection: "row", alignItems: "center", gap: 10, flex: 1 },
-  iconBox: { width: 36, height: 36, borderRadius: 10, justifyContent: "center", alignItems: "center" },
-  headerTitle: { fontSize: 16, fontWeight: "900" },
-  headerSubtitle: { fontSize: 11, fontWeight: "600", marginTop: 1 },
-  scrollArea: { flex: 1 },
-  scrollContent: { padding: 20 },
-  intro: { fontSize: 13, lineHeight: 20, marginBottom: 16 },
-  section: { marginBottom: 16 },
-  sectionTitle: { fontSize: 14, fontWeight: "800", marginBottom: 6 },
-  sectionContent: { fontSize: 13, lineHeight: 20 },
-  divider: { height: StyleSheet.hairlineWidth, marginTop: 16 },
-  noticeBox: { marginTop: 8, padding: 14, borderRadius: 10, borderWidth: 1 },
-  noticeLabel: { fontSize: 11, fontWeight: "700", marginBottom: 4 },
-  noticeText: { fontSize: 11 },
-  footer: { paddingHorizontal: 16, paddingVertical: 12, borderTopWidth: 1 },
-  scrollHint: { textAlign: "center", fontSize: 11, fontWeight: "600", marginBottom: 8 },
-  checkboxRow: { flexDirection: "row", alignItems: "center", gap: 10, marginBottom: 10 },
-  checkbox: { width: 22, height: 22, borderRadius: 6, borderWidth: 2, justifyContent: "center", alignItems: "center" },
-  checkboxLabel: { fontSize: 13, fontWeight: "600", flex: 1 },
-  acceptBtn: { borderRadius: 12, paddingVertical: 14, alignItems: "center" },
-  acceptBtnText: { color: "#fff", fontWeight: "700", fontSize: 15 },
-});

@@ -1,15 +1,13 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import {
-  View, Text, TextInput, TouchableOpacity, StyleSheet,
+  View, Text, TextInput, TouchableOpacity,
   FlatList, ActivityIndicator, RefreshControl, Image,
-  ScrollView,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { useAuth } from "../../contexts/AuthContext";
 import ScreenHeader from "../../components/ScreenHeader";
-import CreatePostModal from "../../components/CreatePostModal";
 import ItemDetailModal from "../../components/ItemDetailModal";
 import ReportModal from "../../components/ReportModal";
 import PickerModal from "../../components/PickerModal";
@@ -18,6 +16,7 @@ import { useTheme } from "../../contexts/ThemeContext";
 import { useTimezone } from "../../contexts/TimezoneContext";
 import { CAMPUSES } from "../../constants/campuses";
 import { formatRelativeDate } from "../../utils/timezone";
+import { useCreatePost } from "../../contexts/CreatePostContext";
 
 function parseCoordinates(coords: string | null): { lat: number; lng: number } | null {
   if (!coords) return null;
@@ -52,6 +51,7 @@ const SORT_OPTIONS = ["Newest", "Oldest", "Most Important"];
 export default function FeedScreen() {
   const router = useRouter();
   const { t } = useTheme();
+  const insets = useSafeAreaInsets();
   const { timezone } = useTimezone();
   const { user, profile } = useAuth();
   const [items, setItems] = useState<any[]>([]);
@@ -68,9 +68,16 @@ export default function FeedScreen() {
   const [listingTypeFilter, setListingTypeFilter] = useState("all");
   const [selectedCampus, setSelectedCampus] = useState(profile?.default_campus || "boston");
   const [selected, setSelected] = useState<any | null>(null);
-  const [showCreatePost, setShowCreatePost] = useState(false);
   const [reportItem, setReportItem] = useState<any | null>(null);
   const [pickerOpen, setPickerOpen] = useState<"category" | "campus" | "sort" | null>(null);
+
+  const { registerOnItemCreated } = useCreatePost();
+
+  useEffect(() => {
+    registerOnItemCreated((item: any) => {
+      setItems((prev) => [item, ...prev]);
+    });
+  }, []);
 
   const fetchItems = useCallback(async (page = 1, append = false) => {
     if (page === 1) setLoading(true);
@@ -130,96 +137,153 @@ export default function FeedScreen() {
   };
 
   const renderItem = ({ item }: { item: any }) => (
-    <TouchableOpacity activeOpacity={0.7} onPress={() => setSelected(item)}>
-      <View style={[styles.card, { backgroundColor: t.card, borderColor: t.cardBorder }]}>
-        <View style={styles.cardHeader}>
-          <View style={styles.cardHeaderLeft}>
-            {item.image_url ? (
-              <Image source={{ uri: item.image_url }} style={styles.cardImage} />
-            ) : (
-              <View style={[styles.cardImagePlaceholder, { backgroundColor: t.inputBg }]}>
-                <Text style={{ fontSize: 20 }}>📦</Text>
-              </View>
-            )}
-            <View style={{ flex: 1 }}>
-              <View style={styles.titleRow}>
-                <Text style={[styles.cardTitle, { color: t.text }]} numberOfLines={1}>{item.title}</Text>
-                {item.listing_type && (
-                  <View style={[styles.badge, { backgroundColor: (LISTING_TYPE_COLORS[item.listing_type] || "#888") + "22", borderColor: (LISTING_TYPE_COLORS[item.listing_type] || "#888") + "44" }]}>
-                    <Text style={[styles.badgeText, { color: LISTING_TYPE_COLORS[item.listing_type] || "#888" }]}>{LISTING_TYPE_LABELS[item.listing_type] || item.listing_type}</Text>
-                  </View>
-                )}
-              </View>
-              <Text style={[styles.cardLocation, { color: t.subtext }]} numberOfLines={1}>{item.locations?.name || "Unknown"} · {item.found_at || ""}</Text>
-              <Text style={[styles.cardMeta, { color: t.muted }]}>{item.poster_name || "Unknown"} · {formatRelativeDate(item.date, timezone)}</Text>
-            </View>
+    <TouchableOpacity
+      className="mx-4 mb-2 rounded-2xl overflow-hidden border border-border dark:border-border-dk bg-card dark:bg-card-dk"
+      onPress={() => setSelected(item)}
+      activeOpacity={0.8}
+    >
+      <View className="flex-row p-3 gap-3">
+        {item.image_url ? (
+          <Image
+            source={{ uri: item.image_url }}
+            className="w-16 h-16 rounded-xl"
+            resizeMode="cover"
+          />
+        ) : (
+          <View className="w-16 h-16 rounded-xl bg-separator dark:bg-separator-dk items-center justify-center">
+            <Ionicons name="image-outline" size={24} color={t.muted} />
           </View>
-          <View style={styles.cardBadges}>
-            <View style={[styles.badge, { backgroundColor: (IMPORTANCE_COLORS[item.importance] || "#888") + "22", borderColor: (IMPORTANCE_COLORS[item.importance] || "#888") + "44" }]}>
-              <Text style={[styles.badgeText, { color: IMPORTANCE_COLORS[item.importance] || "#888" }]}>{IMPORTANCE_LABELS[item.importance] || ""}</Text>
+        )}
+        <View className="flex-1 gap-1">
+          <Text className="text-sm font-bold text-ink dark:text-ink-dk" numberOfLines={1}>
+            {item.title}
+          </Text>
+          {item.description ? (
+            <Text className="text-xs text-subtext dark:text-subtext-dk" numberOfLines={2} style={{ lineHeight: 16 }}>
+              {item.description}
+            </Text>
+          ) : null}
+          <View className="flex-row items-center gap-3">
+            {item.locations?.name ? (
+              <View className="flex-row items-center gap-0.5 flex-1 min-w-0">
+                <Ionicons name="location-outline" size={11} color={t.muted} />
+                <Text className="text-xs text-muted dark:text-muted-dk" numberOfLines={1} style={{ flex: 1 }}>
+                  {item.locations.name}
+                </Text>
+              </View>
+            ) : null}
+            {item.poster_name ? (
+              <View className="flex-row items-center gap-0.5 shrink-0">
+                <Ionicons name="person-outline" size={11} color={t.muted} />
+                <Text className="text-xs text-muted dark:text-muted-dk" numberOfLines={1}>
+                  {item.poster_name}
+                </Text>
+              </View>
+            ) : null}
+          </View>
+          <View className="flex-row items-center gap-2">
+            <View className="px-2 py-0.5 rounded-full" style={{ backgroundColor: LISTING_TYPE_COLORS[item.listing_type] + "22" }}>
+              <Text className="text-xs font-bold" style={{ color: LISTING_TYPE_COLORS[item.listing_type] }}>
+                {LISTING_TYPE_LABELS[item.listing_type]}
+              </Text>
             </View>
-            <Text style={[styles.categoryLabel, { color: t.muted }]}>{item.category}</Text>
+            <Text className="text-xs text-muted dark:text-muted-dk">
+              {formatRelativeDate(item.created_at, timezone)}
+            </Text>
           </View>
         </View>
-        {item.description ? <Text style={[styles.cardDesc, { color: t.subtext }]} numberOfLines={2}>{item.description}</Text> : null}
-        {item.resolved && <View style={styles.resolvedBanner}><Text style={styles.resolvedText}>Resolved</Text></View>}
+        <View className="items-center justify-center">
+          <View
+            className="w-2.5 h-2.5 rounded-full"
+            style={{ backgroundColor: IMPORTANCE_COLORS[item.importance] }}
+          />
+        </View>
       </View>
     </TouchableOpacity>
   );
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: t.bg }]} edges={["top"]}>
-      <ScreenHeader title="Feed" showLogo rightIcon="settings-outline" onRightPress={() => router.push("/settings")} />
+    <SafeAreaView className="flex-1 bg-surface dark:bg-surface-dk" edges={["top"]}>
+      <ScreenHeader title="Feed" showLogo />
 
       {/* Search */}
-      <View style={styles.searchRow}>
-        <View style={[styles.searchBox, { backgroundColor: t.inputBg, borderColor: t.inputBorder }]}>
-          <Ionicons name="search" size={18} color={t.muted} />
-          <TextInput style={[styles.searchInput, { color: t.text }]} placeholder="Search items, locations..." placeholderTextColor={t.muted} value={search} onChangeText={(txt) => setSearch(txt.slice(0, 200))} maxLength={200} />
-        </View>
+      <View className="flex-row items-center bg-input-bg dark:bg-input-bg-dk rounded-full border border-input-border dark:border-input-border-dk px-4 mx-4 mt-2 mb-2">
+        <Ionicons name="search-outline" size={18} color={t.muted} />
+        <TextInput
+          className="flex-1 py-3 px-2 text-sm text-ink dark:text-ink-dk"
+          placeholder="Search listings..."
+          placeholderTextColor={t.muted}
+          value={search}
+          onChangeText={setSearch}
+        />
+        {search.length > 0 && (
+          <TouchableOpacity onPress={() => setSearch("")} hitSlop={8}>
+            <Ionicons name="close-circle" size={18} color={t.muted} />
+          </TouchableOpacity>
+        )}
       </View>
 
       {/* Dropdown pickers row */}
-      <View style={[styles.pickerRow, { borderBottomColor: t.separator }]}>
-        <TouchableOpacity style={[styles.pickerBtn, { backgroundColor: t.card, borderColor: t.cardBorder }]} onPress={() => setPickerOpen("category")}>
-          <Text style={[styles.pickerBtnText, { color: t.text }]} numberOfLines={1}>{category}</Text>
+      <View className="flex-row items-center px-4 py-1 gap-2">
+        <TouchableOpacity
+          className="flex-1 flex-row items-center justify-between px-3 py-2 rounded-xl border border-border dark:border-border-dk bg-card dark:bg-card-dk"
+          onPress={() => setPickerOpen("category")}
+        >
+          <Text className="text-xs font-bold text-ink dark:text-ink-dk flex-1" numberOfLines={1}>{category}</Text>
           <Ionicons name="chevron-down" size={14} color={t.muted} />
         </TouchableOpacity>
-        <TouchableOpacity style={[styles.pickerBtn, { backgroundColor: t.card, borderColor: t.cardBorder }]} onPress={() => setPickerOpen("campus")}>
-          <Text style={[styles.pickerBtnText, { color: t.text }]} numberOfLines={1}>{selectedCampus === "all" ? "All" : CAMPUSES.find((c: any) => c.id === selectedCampus)?.name || "Campus"}</Text>
+        <TouchableOpacity
+          className="flex-1 flex-row items-center justify-between px-3 py-2 rounded-xl border border-border dark:border-border-dk bg-card dark:bg-card-dk"
+          onPress={() => setPickerOpen("campus")}
+        >
+          <Text className="text-xs font-bold text-ink dark:text-ink-dk flex-1" numberOfLines={1}>{selectedCampus === "all" ? "All" : CAMPUSES.find((c: any) => c.id === selectedCampus)?.name || "Campus"}</Text>
           <Ionicons name="chevron-down" size={14} color={t.muted} />
         </TouchableOpacity>
-        <TouchableOpacity style={[styles.pickerBtn, { backgroundColor: t.card, borderColor: t.cardBorder }]} onPress={() => setPickerOpen("sort")}>
-          <Text style={[styles.pickerBtnText, { color: t.text }]} numberOfLines={1}>{sort}</Text>
+        <TouchableOpacity
+          className="flex-1 flex-row items-center justify-between px-3 py-2 rounded-xl border border-border dark:border-border-dk bg-card dark:bg-card-dk"
+          onPress={() => setPickerOpen("sort")}
+        >
+          <Text className="text-xs font-bold text-ink dark:text-ink-dk flex-1" numberOfLines={1}>{sort}</Text>
           <Ionicons name="chevron-down" size={14} color={t.muted} />
         </TouchableOpacity>
       </View>
 
       {/* Toggle filters row */}
-      <View style={[styles.filterRow, { borderBottomColor: t.separator }]}>
-        <Text style={[styles.itemCount, { color: t.subtext }]}>{filtered.length} item{filtered.length !== 1 ? "s" : ""}</Text>
-        <View style={{ flexDirection: "row", gap: 6 }}>
-          <TouchableOpacity onPress={() => { const c = ["all", "lost", "found"]; setListingTypeFilter(c[(c.indexOf(listingTypeFilter) + 1) % c.length]); }} style={[styles.filterChip, { backgroundColor: listingTypeFilter === "all" ? t.accent : LISTING_TYPE_COLORS[listingTypeFilter] }]}>
-            <Text style={styles.filterChipText}>{listingTypeFilter === "all" ? "All" : LISTING_TYPE_LABELS[listingTypeFilter]}</Text>
-          </TouchableOpacity>
-          <TouchableOpacity onPress={() => setShowMyPosts((v) => !v)} style={[styles.filterChip, { backgroundColor: showMyPosts ? "#2a2520" : t.cardSolid, borderWidth: 1, borderColor: showMyPosts ? "rgba(245,158,11,0.5)" : t.cardBorder }]}>
-            <Text style={[styles.filterChipText, { color: showMyPosts ? "#f6c66a" : t.muted }]}>Mine</Text>
-          </TouchableOpacity>
-          <TouchableOpacity onPress={() => setShowResolved((v) => !v)} style={[styles.filterChip, { backgroundColor: showResolved ? "#1f3527" : t.cardSolid, borderWidth: 1, borderColor: showResolved ? "rgba(110,231,183,0.42)" : t.cardBorder }]}>
-            <Text style={[styles.filterChipText, { color: showResolved ? "#6ee7b7" : t.muted }]}>Resolved</Text>
-          </TouchableOpacity>
-        </View>
+      <View className="flex-row items-center px-4 py-1 gap-3">
+        <Text className="text-xs font-bold text-subtext dark:text-subtext-dk">{filtered.length} item{filtered.length !== 1 ? "s" : ""}</Text>
+        <TouchableOpacity
+          onPress={() => { const c = ["all", "lost", "found"]; setListingTypeFilter(c[(c.indexOf(listingTypeFilter) + 1) % c.length]); }}
+          style={{ paddingHorizontal: 12, paddingVertical: 5, borderRadius: 99, borderWidth: 1, backgroundColor: listingTypeFilter !== "all" ? t.accent : t.cardSolid, borderColor: listingTypeFilter !== "all" ? t.accent : t.cardBorder }}
+        >
+          <Text style={{ fontSize: 12, fontWeight: "700", color: listingTypeFilter !== "all" ? "#fff" : t.text }}>
+            {listingTypeFilter === "all" ? "All" : LISTING_TYPE_LABELS[listingTypeFilter]}
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          onPress={() => setShowMyPosts((v) => !v)}
+          style={{ paddingHorizontal: 12, paddingVertical: 5, borderRadius: 99, borderWidth: 1, backgroundColor: showMyPosts ? t.accent : t.cardSolid, borderColor: showMyPosts ? t.accent : t.cardBorder }}
+        >
+          <Text style={{ fontSize: 12, fontWeight: "700", color: showMyPosts ? "#fff" : t.text }}>Mine</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          onPress={() => setShowResolved((v) => !v)}
+          style={{ paddingHorizontal: 12, paddingVertical: 5, borderRadius: 99, borderWidth: 1, backgroundColor: showResolved ? t.accent : t.cardSolid, borderColor: showResolved ? t.accent : t.cardBorder }}
+        >
+          <Text style={{ fontSize: 12, fontWeight: "700", color: showResolved ? "#fff" : t.text }}>Resolved</Text>
+        </TouchableOpacity>
       </View>
 
       {/* List */}
       {loading ? (
-        <View style={styles.centered}><ActivityIndicator size="large" color={t.accent} /></View>
+        <View className="flex-1 justify-center items-center pt-16">
+          <ActivityIndicator size="large" color={t.accent} />
+        </View>
       ) : (
         <FlatList
           data={filtered}
           keyExtractor={(item) => item.item_id}
           renderItem={renderItem}
-          contentContainerStyle={[styles.listContent, { paddingBottom: 90 }]}
+          contentContainerStyle={{ paddingBottom: insets.bottom + 80 }}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={t.accent} />}
           onEndReached={loadMore}
           onEndReachedThreshold={0.3}
@@ -228,18 +292,13 @@ export default function FeedScreen() {
               {loadingMore ? <ActivityIndicator size="small" color={t.accent} /> : <Text style={{ color: t.muted, fontSize: 13 }}>Pull up for more</Text>}
             </View>
           ) : null}
-          ListEmptyComponent={<View style={styles.centered}><Text style={[styles.emptyText, { color: t.muted }]}>No items found.</Text></View>}
+          ListEmptyComponent={
+            <View className="flex-1 justify-center items-center pt-16">
+              <Text className="text-base font-bold text-muted dark:text-muted-dk">No items found.</Text>
+            </View>
+          }
         />
       )}
-
-      {/* Floating create button */}
-      <TouchableOpacity
-        style={[styles.fab, { backgroundColor: t.accent }]}
-        onPress={() => setShowCreatePost(true)}
-        activeOpacity={0.8}
-      >
-        <Ionicons name="add" size={28} color="#fff" />
-      </TouchableOpacity>
 
       <ItemDetailModal item={selected} onClose={() => setSelected(null)} onClaim={handleClaim} onReport={(item) => setReportItem(item)} />
 
@@ -249,12 +308,6 @@ export default function FeedScreen() {
         type="post"
         targetId={reportItem?.item_id || ""}
         targetLabel={reportItem?.title || ""}
-      />
-
-      <CreatePostModal
-        visible={showCreatePost}
-        onClose={() => setShowCreatePost(false)}
-        onAdd={(item) => setItems((prev) => [item, ...prev])}
       />
 
       <PickerModal
@@ -284,45 +337,3 @@ export default function FeedScreen() {
     </SafeAreaView>
   );
 }
-
-const styles = StyleSheet.create({
-  container: { flex: 1 },
-  header: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: StyleSheet.hairlineWidth },
-  headerTitle: { fontSize: 22, fontWeight: "900" },
-  iconBtn: { width: 36, height: 36, borderRadius: 18, justifyContent: "center", alignItems: "center" },
-  searchRow: { paddingHorizontal: 16, paddingTop: 12 },
-  searchBox: { flexDirection: "row", alignItems: "center", borderRadius: 12, paddingHorizontal: 12, borderWidth: 1, gap: 8 },
-  searchInput: { flex: 1, paddingVertical: 12, fontSize: 15 },
-  chipScroll: { maxHeight: 44, marginTop: 10, flexGrow: 0 },
-  chipContainer: { paddingHorizontal: 16, gap: 8 },
-  chip: { paddingHorizontal: 14, paddingVertical: 6, borderRadius: 20, borderWidth: 1 },
-  chipText: { fontWeight: "800", fontSize: 13 },
-  pickerRow: { flexDirection: "row", paddingHorizontal: 16, paddingVertical: 8, gap: 8, borderBottomWidth: StyleSheet.hairlineWidth },
-  pickerBtn: { flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 10, paddingVertical: 8, borderRadius: 10, borderWidth: 1 },
-  pickerBtnText: { fontSize: 13, fontWeight: "700" },
-  filterRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingHorizontal: 16, paddingVertical: 8, borderBottomWidth: StyleSheet.hairlineWidth },
-  itemCount: { fontWeight: "700", fontSize: 13 },
-  filterButtons: { flexDirection: "row", gap: 6 },
-  filterChip: { paddingHorizontal: 10, paddingVertical: 5, borderRadius: 14 },
-  filterChipText: { color: "#fff", fontWeight: "800", fontSize: 11 },
-  listContent: { paddingHorizontal: 16, gap: 10, paddingTop: 8 },
-  card: { borderRadius: 16, padding: 14, borderWidth: 1 },
-  cardHeader: { flexDirection: "row", justifyContent: "space-between" },
-  cardHeaderLeft: { flexDirection: "row", flex: 1, gap: 12 },
-  cardImage: { width: 44, height: 44, borderRadius: 10 },
-  cardImagePlaceholder: { width: 44, height: 44, borderRadius: 10, justifyContent: "center", alignItems: "center" },
-  titleRow: { flexDirection: "row", alignItems: "center", gap: 6, flexWrap: "wrap" },
-  cardTitle: { fontSize: 14, fontWeight: "800", flexShrink: 1 },
-  cardLocation: { fontSize: 12, fontWeight: "600", marginTop: 2 },
-  cardMeta: { fontSize: 11, marginTop: 2 },
-  cardBadges: { alignItems: "flex-end", gap: 4, marginLeft: 8 },
-  badge: { paddingHorizontal: 8, paddingVertical: 2, borderRadius: 10, borderWidth: 1 },
-  badgeText: { fontSize: 10, fontWeight: "800" },
-  categoryLabel: { fontSize: 10, fontWeight: "700" },
-  cardDesc: { fontSize: 13, marginTop: 10, lineHeight: 18 },
-  resolvedBanner: { marginTop: 8, backgroundColor: "#1f3527", borderRadius: 8, paddingVertical: 6, alignItems: "center" },
-  resolvedText: { color: "#6ee7b7", fontWeight: "800", fontSize: 12 },
-  centered: { flex: 1, justifyContent: "center", alignItems: "center", paddingTop: 60 },
-  emptyText: { fontWeight: "700", fontSize: 15 },
-  fab: { position: "absolute", bottom: 100, right: 20, width: 56, height: 56, borderRadius: 28, justifyContent: "center", alignItems: "center", elevation: 6, shadowColor: "#000", shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.3, shadowRadius: 6 },
-});

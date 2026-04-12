@@ -1,8 +1,7 @@
 import {
-  View, Text, TouchableOpacity, StyleSheet, ScrollView,
-  Modal, Image, Alert,
+  View, Text, TouchableOpacity, ScrollView,
+  Image, Alert,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
 import MapView, { Marker } from "react-native-maps";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
@@ -11,7 +10,8 @@ import { useTheme } from "../contexts/ThemeContext";
 import { useTimezone } from "../contexts/TimezoneContext";
 import apiFetch from "../utils/apiFetch";
 import { formatRelativeDate } from "../utils/timezone";
-import { tapHaptic, successHaptic } from "../utils/haptics";
+import { tapHaptic } from "../utils/haptics";
+import BottomSheet from "./BottomSheet";
 
 const IMPORTANCE_LABELS: Record<number, string> = { 3: "High", 2: "Medium", 1: "Low" };
 const IMPORTANCE_COLORS: Record<number, string> = { 3: "#b91c1c", 2: "#a16207", 1: "#1d4ed8" };
@@ -55,10 +55,8 @@ export default function ItemDetailModal({ item, onClose, onClaim, onReport }: Pr
   const { timezone } = useTimezone();
   const router = useRouter();
 
-  if (!item) return null;
-
-  const coords = getItemCoords(item);
-  const isOwner = user?.id && item.poster_id === user.id;
+  const coords = item ? getItemCoords(item) : null;
+  const isOwner = user?.id && item?.poster_id === user.id;
 
   const handleMessage = async () => {
     tapHaptic();
@@ -75,120 +73,153 @@ export default function ItemDetailModal({ item, onClose, onClaim, onReport }: Pr
   };
 
   return (
-    <Modal visible={!!item} animationType="slide" transparent>
-      <View style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.5)" }}>
-        <SafeAreaView style={{ flex: 1, justifyContent: "center", padding: 16 }}>
-          <View style={[styles.card, { backgroundColor: t.cardSolid, borderColor: t.cardBorder }]}>
-            <TouchableOpacity onPress={onClose} style={styles.closeBtn} hitSlop={12}>
-              <Ionicons name="close-circle" size={30} color={t.muted} />
-            </TouchableOpacity>
+    <BottomSheet visible={!!item} onClose={onClose} heightFraction={0.88}>
+      {/* Image hero */}
+      {item?.image_url ? (
+        <Image
+          source={{ uri: item.image_url }}
+          style={{ width: "100%", height: 200 }}
+          resizeMode="cover"
+        />
+      ) : (
+        <View className="w-full h-40 bg-separator dark:bg-separator-dk items-center justify-center">
+          <Ionicons name="image-outline" size={40} color={t.muted} />
+        </View>
+      )}
 
-            <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-              <Text style={[styles.title, { color: t.text }]}>{item.title}</Text>
+      {/* Content */}
+      <ScrollView className="flex-1" contentContainerStyle={{ padding: 20, paddingBottom: 40 }} showsVerticalScrollIndicator={false}>
+        {/* Title */}
+        <Text className="text-2xl font-black text-ink dark:text-ink-dk mb-1">{item?.title}</Text>
 
-              <View style={styles.badgeRow}>
-                {item.listing_type && (
-                  <View style={[styles.badge, { backgroundColor: (LISTING_TYPE_COLORS[item.listing_type] || "#888") + "22", borderColor: (LISTING_TYPE_COLORS[item.listing_type] || "#888") + "44" }]}>
-                    <Text style={[styles.badgeText, { color: LISTING_TYPE_COLORS[item.listing_type] }]}>{LISTING_TYPE_LABELS[item.listing_type]}</Text>
-                  </View>
-                )}
-                <View style={[styles.badge, { backgroundColor: (IMPORTANCE_COLORS[item.importance] || "#888") + "22", borderColor: (IMPORTANCE_COLORS[item.importance] || "#888") + "44" }]}>
-                  <Text style={[styles.badgeText, { color: IMPORTANCE_COLORS[item.importance] }]}>{IMPORTANCE_LABELS[item.importance]}</Text>
-                </View>
-                <View style={[styles.badge, { backgroundColor: t.inputBg, borderColor: t.inputBorder }]}>
-                  <Text style={[styles.badgeText, { color: t.subtext }]}>{item.category}</Text>
-                </View>
-              </View>
-
-              {item.image_url && <Image source={{ uri: item.image_url }} style={styles.image} />}
-
-              <View style={[styles.infoCard, { backgroundColor: t.bg, borderColor: t.cardBorder }]}>
-                <View style={styles.infoRow}>
-                  <Ionicons name="location" size={18} color={t.accent} />
-                  <View style={{ flex: 1 }}>
-                    <Text style={{ fontSize: 14, fontWeight: "700", color: t.text }}>{item.locations?.name || "Unknown"}</Text>
-                    {item.found_at ? <Text style={{ fontSize: 12, color: t.subtext, marginTop: 2 }}>{item.found_at}</Text> : null}
-                  </View>
-                </View>
-                <View style={[styles.divider, { backgroundColor: t.separator }]} />
-                <View style={styles.infoRow}>
-                  <Ionicons name="person" size={18} color={t.accent} />
-                  <Text style={{ fontSize: 14, fontWeight: "600", color: t.text, flex: 1 }}>{item.poster_name || "Unknown"}</Text>
-                  <Text style={{ fontSize: 12, color: t.muted }}>{formatRelativeDate(item.date, timezone)}</Text>
-                </View>
-              </View>
-
-              {item.description ? (
-                <View style={[styles.infoCard, { backgroundColor: t.bg, borderColor: t.cardBorder, marginTop: 10 }]}>
-                  <Text style={{ fontSize: 15, lineHeight: 22, color: t.text }}>{item.description}</Text>
-                </View>
-              ) : null}
-
-              {coords && (
-                <View style={[styles.miniMapContainer, { borderColor: t.cardBorder }]}>
-                  <MapView
-                    style={styles.miniMap}
-                    initialRegion={{ latitude: coords.lat, longitude: coords.lng, latitudeDelta: 0.003, longitudeDelta: 0.003 }}
-                    scrollEnabled={false} zoomEnabled={false} rotateEnabled={false} pitchEnabled={false}
-                  >
-                    <Marker coordinate={{ latitude: coords.lat, longitude: coords.lng }} pinColor={t.accent} />
-                  </MapView>
-                </View>
-              )}
-
-              {/* Actions */}
-              {item.resolved ? (
-                <View style={styles.resolvedBanner}><Text style={styles.resolvedText}>This item has been resolved</Text></View>
-              ) : isOwner ? (
-                <TouchableOpacity style={styles.claimBtn} onPress={() => onClaim?.(item.item_id)}>
-                  <Text style={styles.claimBtnText}>Mark as Returned</Text>
-                </TouchableOpacity>
-              ) : (
-                <TouchableOpacity style={[styles.messageBtn, { backgroundColor: t.accent }]} onPress={handleMessage}>
-                  <Ionicons name="chatbubble-outline" size={18} color="#fff" />
-                  <Text style={styles.messageBtnText}>Message Poster</Text>
-                </TouchableOpacity>
-              )}
-
-              {!isOwner && (
-                <TouchableOpacity
-                  style={[styles.reportBtn, { borderColor: t.cardBorder }]}
-                  onPress={() => {
-                    onClose();
-                    setTimeout(() => onReport?.(item), 300);
-                  }}
-                >
-                  <Ionicons name="flag-outline" size={16} color={t.muted} />
-                  <Text style={{ color: t.muted, fontWeight: "600", fontSize: 13 }}>Report Post</Text>
-                </TouchableOpacity>
-              )}
-            </ScrollView>
+        {/* Badges */}
+        <View className="flex-row gap-2 mb-4 flex-wrap">
+          {item?.listing_type && (
+            <View
+              className="px-3 py-1 rounded-full"
+              style={{ backgroundColor: (LISTING_TYPE_COLORS[item.listing_type] || "#999") + "22" }}
+            >
+              <Text
+                className="text-xs font-bold"
+                style={{ color: LISTING_TYPE_COLORS[item.listing_type] || "#999" }}
+              >
+                {LISTING_TYPE_LABELS[item.listing_type] || item.listing_type}
+              </Text>
+            </View>
+          )}
+          {item?.importance != null && (
+            <View
+              className="px-3 py-1 rounded-full"
+              style={{ backgroundColor: (IMPORTANCE_COLORS[item.importance] || "#999") + "22" }}
+            >
+              <Text
+                className="text-xs font-bold"
+                style={{ color: IMPORTANCE_COLORS[item.importance] || "#999" }}
+              >
+                {IMPORTANCE_LABELS[item.importance]}
+              </Text>
+            </View>
+          )}
+          <View className="px-3 py-1 rounded-full bg-separator dark:bg-separator-dk">
+            <Text className="text-xs font-semibold text-subtext dark:text-subtext-dk">{item?.category}</Text>
           </View>
-        </SafeAreaView>
-      </View>
-    </Modal>
+        </View>
+
+        {/* Details card */}
+        <View className="rounded-2xl bg-card dark:bg-card-dk border border-border dark:border-border-dk p-4 mb-4">
+          {/* Location */}
+          <View className="mb-3 flex-row items-start gap-2">
+            <Ionicons name="location" size={16} color={t.accent} style={{ marginTop: 2 }} />
+            <View className="flex-1">
+              <Text className="text-xs font-bold text-muted dark:text-muted-dk uppercase tracking-wide mb-1">Location</Text>
+              <Text className="text-sm text-ink dark:text-ink-dk">{item?.locations?.name || "Unknown"}</Text>
+              {item?.found_at ? (
+                <Text className="text-xs text-subtext dark:text-subtext-dk mt-1">{item.found_at}</Text>
+              ) : null}
+            </View>
+          </View>
+
+          {/* Divider */}
+          <View className="border-b border-border dark:border-border-dk mb-3" />
+
+          {/* Poster + date */}
+          <View className="flex-row items-center gap-2">
+            <Ionicons name="person" size={16} color={t.accent} />
+            <View className="flex-1">
+              <Text className="text-xs font-bold text-muted dark:text-muted-dk uppercase tracking-wide mb-1">Posted by</Text>
+              <Text className="text-sm text-ink dark:text-ink-dk">{item?.poster_name || "Unknown"}</Text>
+            </View>
+            <Text className="text-xs text-subtext dark:text-subtext-dk">{item ? formatRelativeDate(item.date, timezone) : ""}</Text>
+          </View>
+        </View>
+
+        {/* Description card */}
+        {item?.description ? (
+          <View className="rounded-2xl bg-card dark:bg-card-dk border border-border dark:border-border-dk p-4 mb-4">
+            <Text className="text-xs font-bold text-muted dark:text-muted-dk uppercase tracking-wide mb-2">Description</Text>
+            <Text className="text-sm text-ink dark:text-ink-dk leading-5">{item.description}</Text>
+          </View>
+        ) : null}
+
+        {/* Mini map — SAFE ZONE: MapView props untouched */}
+        {coords && (
+          <View
+            style={{
+              borderRadius: 14,
+              overflow: "hidden",
+              borderWidth: 1,
+              borderColor: t.cardBorder,
+              height: 160,
+              marginBottom: 16,
+            }}
+          >
+            <MapView
+              style={{ width: "100%", height: "100%" }}
+              initialRegion={{ latitude: coords.lat, longitude: coords.lng, latitudeDelta: 0.003, longitudeDelta: 0.003 }}
+              scrollEnabled={false} zoomEnabled={false} rotateEnabled={false} pitchEnabled={false}
+            >
+              <Marker coordinate={{ latitude: coords.lat, longitude: coords.lng }} pinColor={t.accent} />
+            </MapView>
+          </View>
+        )}
+
+        {/* Action buttons */}
+        <View className="gap-3 mt-2">
+          {item?.resolved ? (
+            <View style={{ backgroundColor: t.isDark ? "rgba(16,185,129,0.15)" : "rgba(16,185,129,0.12)", borderRadius: 12, padding: 16, alignItems: "center" }}>
+              <Text style={{ color: t.isDark ? "#6ee7b7" : "#065f46", fontWeight: "700", fontSize: 14 }}>This item has been resolved</Text>
+            </View>
+          ) : isOwner ? (
+            <TouchableOpacity
+              className="bg-primary dark:bg-primary-dk rounded-xl p-4 items-center"
+              onPress={() => onClaim?.(item.item_id)}
+            >
+              <Text className="text-white font-bold">Mark as Returned</Text>
+            </TouchableOpacity>
+          ) : (
+            <TouchableOpacity
+              className="rounded-xl p-4 flex-row items-center justify-center gap-2"
+              style={{ backgroundColor: t.accent }}
+              onPress={handleMessage}
+            >
+              <Ionicons name="chatbubble-outline" size={18} color="#fff" />
+              <Text className="text-white font-bold text-base">Message Poster</Text>
+            </TouchableOpacity>
+          )}
+
+          {!isOwner && (
+            <TouchableOpacity
+              className="border border-red-500/30 rounded-xl p-4 items-center"
+              onPress={() => {
+                onClose();
+                setTimeout(() => onReport?.(item), 300);
+              }}
+            >
+              <Text className="text-red-500 font-semibold text-sm">Report Post</Text>
+            </TouchableOpacity>
+          )}
+        </View>
+      </ScrollView>
+    </BottomSheet>
   );
 }
-
-const styles = StyleSheet.create({
-  card: { flex: 1, maxHeight: "90%", borderRadius: 20, borderWidth: 1, overflow: "hidden" },
-  closeBtn: { position: "absolute", top: 12, right: 12, zIndex: 10 },
-  content: { padding: 20, paddingTop: 16, paddingBottom: 24 },
-  title: { fontSize: 24, fontWeight: "900" },
-  badgeRow: { flexDirection: "row", gap: 6, flexWrap: "wrap", marginTop: 10 },
-  badge: { paddingHorizontal: 8, paddingVertical: 2, borderRadius: 10, borderWidth: 1 },
-  badgeText: { fontSize: 10, fontWeight: "800" },
-  image: { width: "100%", height: 220, borderRadius: 14, marginTop: 16 },
-  infoCard: { borderRadius: 14, borderWidth: 1, padding: 14, marginTop: 14 },
-  infoRow: { flexDirection: "row", alignItems: "center", gap: 10, paddingVertical: 4 },
-  divider: { height: StyleSheet.hairlineWidth, marginVertical: 6 },
-  miniMapContainer: { borderRadius: 14, overflow: "hidden", borderWidth: 1, height: 160, marginTop: 12 },
-  miniMap: { width: "100%", height: "100%" },
-  resolvedBanner: { backgroundColor: "#1f3527", borderRadius: 10, paddingVertical: 10, alignItems: "center", marginTop: 16 },
-  resolvedText: { color: "#6ee7b7", fontWeight: "800", fontSize: 13 },
-  claimBtn: { backgroundColor: "#16a34a", borderRadius: 14, paddingVertical: 16, alignItems: "center", marginTop: 16 },
-  claimBtnText: { color: "#fff", fontWeight: "700", fontSize: 16 },
-  messageBtn: { flexDirection: "row", borderRadius: 14, paddingVertical: 14, alignItems: "center", justifyContent: "center", gap: 8, marginTop: 16 },
-  messageBtnText: { color: "#fff", fontWeight: "700", fontSize: 15 },
-  reportBtn: { flexDirection: "row", borderRadius: 10, paddingVertical: 10, alignItems: "center", justifyContent: "center", gap: 6, borderWidth: 1, marginTop: 10 },
-});

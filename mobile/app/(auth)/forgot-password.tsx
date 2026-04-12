@@ -4,11 +4,15 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
-  StyleSheet,
   KeyboardAvoidingView,
   Platform,
   ActivityIndicator,
+  Image,
+  ScrollView,
 } from "react-native";
+import { LinearGradient } from "expo-linear-gradient";
+import { Ionicons } from "@expo/vector-icons";
+import { BlurView } from "expo-blur";
 import { useRouter } from "expo-router";
 import { supabase } from "../../utils/supabaseClient";
 import { useTheme } from "../../contexts/ThemeContext";
@@ -43,120 +47,69 @@ export default function ForgotPasswordScreen() {
   };
 
   return (
-    <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === "ios" ? "padding" : "height"}>
-      <View style={styles.content}>
-        <View style={styles.card}>
-          <Text style={styles.title}>Reset Password</Text>
-          <Text style={styles.subtitle}>
-            Enter your Northeastern email and we'll send you a reset link.
-          </Text>
+    <LinearGradient colors={["#1a0a0a", "#030303", "#0a0505"]} style={{ flex: 1 }}>
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : "height"}>
+        <ScrollView
+          contentContainerStyle={{ flexGrow: 1, justifyContent: "center", padding: 24, paddingBottom: 40 }}
+          keyboardShouldPersistTaps="handled"
+        >
+          {/* Logo + Brand */}
+          <View className="items-center mb-7">
+            <Image
+              source={require("../../assets/AppLogo.jpeg")}
+              className="w-20 h-20 rounded-2xl mb-3"
+              resizeMode="contain"
+            />
+            <Text className="text-2xl font-black text-white tracking-wide">Lost & Hound</Text>
+          </View>
 
-          <TextInput
-            style={styles.input}
-            placeholder="you@northeastern.edu"
-            placeholderTextColor="#818384"
-            value={email}
-            onChangeText={setEmail}
-            autoCapitalize="none"
-            keyboardType="email-address"
-          />
-
-          {error ? <Text style={styles.error}>{error}</Text> : null}
-          {message ? <Text style={styles.info}>{message}</Text> : null}
-
-          <TouchableOpacity
-            style={[styles.button, loading && styles.buttonDisabled]}
-            onPress={handleSubmit}
-            disabled={loading}
+          {/* Glass Card */}
+          <BlurView
+            intensity={25}
+            tint="dark"
+            style={{ borderRadius: 20, overflow: "hidden", borderWidth: 1, borderColor: "rgba(255,255,255,0.12)" }}
           >
-            {loading ? (
-              <ActivityIndicator color="#fff" />
-            ) : (
-              <Text style={styles.buttonText}>Send Reset Link</Text>
-            )}
-          </TouchableOpacity>
+            <View className="p-6">
+              <Text className="text-xl font-extrabold text-white mb-1">Reset Password</Text>
+              <Text className="text-sm text-white/60 mb-5">
+                Enter your Northeastern email and we'll send you a reset link.
+              </Text>
 
-          <TouchableOpacity onPress={() => router.back()} style={styles.linkButton}>
-            <Text style={styles.linkText}>Back to sign in</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
-    </KeyboardAvoidingView>
+              <View className="flex-row items-center bg-white/10 rounded-xl border border-white/10 mb-3 px-4">
+                <Ionicons name="mail-outline" size={18} color="rgba(255,255,255,0.4)" />
+                <TextInput
+                  className="flex-1 py-4 px-3 text-base text-white"
+                  placeholder="you@northeastern.edu"
+                  placeholderTextColor="rgba(255,255,255,0.3)"
+                  value={email}
+                  onChangeText={setEmail}
+                  autoCapitalize="none"
+                  keyboardType="email-address"
+                />
+              </View>
+
+              {error ? <Text className="text-red-300 text-sm mb-2 font-semibold">{error}</Text> : null}
+              {message ? <Text className="text-green-300 text-sm mb-2 font-semibold">{message}</Text> : null}
+
+              <TouchableOpacity
+                className={`bg-primary rounded-xl p-4 items-center mt-2 ${loading ? "opacity-60" : ""}`}
+                onPress={handleSubmit}
+                disabled={loading}
+              >
+                {loading ? (
+                  <ActivityIndicator color="#fff" />
+                ) : (
+                  <Text className="text-white font-bold text-base">Send Reset Link</Text>
+                )}
+              </TouchableOpacity>
+
+              <TouchableOpacity onPress={() => router.back()} className="mt-4 items-center">
+                <Text className="text-white/70 font-bold text-sm">Back to sign in</Text>
+              </TouchableOpacity>
+            </View>
+          </BlurView>
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </LinearGradient>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#030303",
-  },
-  content: {
-    flex: 1,
-    justifyContent: "center",
-    padding: 24,
-  },
-  card: {
-    backgroundColor: "#1A1A1B",
-    borderRadius: 16,
-    padding: 24,
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.14)",
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: "800",
-    color: "#D7DADC",
-    marginBottom: 4,
-  },
-  subtitle: {
-    fontSize: 14,
-    color: "#B8BABD",
-    marginBottom: 20,
-  },
-  input: {
-    backgroundColor: "#2D2D2E",
-    borderRadius: 10,
-    padding: 14,
-    fontSize: 16,
-    color: "#D7DADC",
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.2)",
-    marginBottom: 12,
-  },
-  button: {
-    backgroundColor: "#A84D48",
-    borderRadius: 10,
-    padding: 16,
-    alignItems: "center",
-    marginTop: 8,
-  },
-  buttonDisabled: {
-    opacity: 0.6,
-  },
-  buttonText: {
-    color: "#fff",
-    fontSize: 16,
-    fontWeight: "700",
-  },
-  linkButton: {
-    marginTop: 16,
-    alignItems: "center",
-  },
-  linkText: {
-    color: "#A84D48",
-    fontWeight: "700",
-    fontSize: 14,
-  },
-  error: {
-    color: "#ef4444",
-    fontSize: 13,
-    marginBottom: 8,
-    fontWeight: "600",
-  },
-  info: {
-    color: "#22c55e",
-    fontSize: 13,
-    marginBottom: 8,
-    fontWeight: "600",
-  },
-});

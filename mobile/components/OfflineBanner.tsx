@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { View, Text, StyleSheet } from "react-native";
+import { View, Text } from "react-native";
 import NetInfo from "@react-native-community/netinfo";
 import { Ionicons } from "@expo/vector-icons";
 
@@ -16,26 +16,9 @@ export default function OfflineBanner() {
   if (!isOffline) return null;
 
   return (
-    <View style={styles.banner}>
-      <Ionicons name="cloud-offline-outline" size={16} color="#fff" />
-      <Text style={styles.text}>No internet connection</Text>
+    <View className="absolute top-12 self-center z-50 flex-row items-center gap-1.5 px-4 py-2 rounded-full bg-red-500 shadow-lg">
+      <Ionicons name="cloud-offline-outline" size={14} color="#fff" />
+      <Text className="text-white font-bold text-sm">No internet connection</Text>
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  banner: {
-    backgroundColor: "#ef4444",
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 6,
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-  },
-  text: {
-    color: "#fff",
-    fontWeight: "700",
-    fontSize: 13,
-  },
-});

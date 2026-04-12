@@ -1,13 +1,13 @@
 import { useState } from "react";
 import {
-  View, Text, TextInput, TouchableOpacity, StyleSheet,
-  ScrollView, Modal, ActivityIndicator, Alert,
+  View, Text, TextInput, TouchableOpacity,
+  ScrollView, ActivityIndicator,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useTheme } from "../contexts/ThemeContext";
 import apiFetch from "../utils/apiFetch";
 import { successHaptic } from "../utils/haptics";
+import BottomSheet from "./BottomSheet";
 
 const REPORT_REASON_MAX_LENGTH = 50;
 const REPORT_DETAILS_MAX_LENGTH = 250;
@@ -84,144 +84,110 @@ export default function ReportModal({ visible, onClose, type, targetId, targetLa
   };
 
   return (
-    <Modal visible={visible} animationType="slide" transparent>
-      <View style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.5)" }}>
-        <SafeAreaView style={{ flex: 1, justifyContent: "center", padding: 20 }}>
-          <View style={[styles.card, { backgroundColor: t.cardSolid, borderColor: t.cardBorder }]}>
-            {/* Header */}
-            <View style={styles.header}>
-              <Text style={[styles.headerTitle, { color: t.text }]}>
-                Report {type === "post" ? "Post" : "User"}
-              </Text>
-              <TouchableOpacity onPress={handleClose} hitSlop={12}>
-                <Ionicons name="close-circle" size={28} color={t.muted} />
-              </TouchableOpacity>
-            </View>
-
-            {submitted ? (
-              <View style={styles.successView}>
-                <Ionicons name="checkmark-circle" size={48} color="#22c55e" />
-                <Text style={[styles.successTitle, { color: t.text }]}>Report submitted</Text>
-                <Text style={[styles.successSubtitle, { color: t.subtext }]}>
-                  Thanks for helping keep the community safe. We'll review this shortly.
-                </Text>
-                <TouchableOpacity style={[styles.doneBtn, { backgroundColor: t.accent }]} onPress={handleClose}>
-                  <Text style={styles.doneBtnText}>Done</Text>
-                </TouchableOpacity>
-              </View>
-            ) : (
-              <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-                <Text style={[styles.label, { color: t.subtext }]}>
-                  Reporting: <Text style={{ fontWeight: "800", color: t.text }}>{targetLabel}</Text>
-                </Text>
-
-                <Text style={[styles.sectionLabel, { color: t.subtext }]}>
-                  Why are you reporting this {type === "post" ? "post" : "user"}?
-                </Text>
-
-                {reasons.map((r) => (
-                  <TouchableOpacity
-                    key={r}
-                    style={[
-                      styles.reasonRow,
-                      {
-                        borderColor: reason === r ? t.accent : t.cardBorder,
-                        backgroundColor: reason === r
-                          ? (t.isDark ? "rgba(168,77,72,0.12)" : "rgba(168,77,72,0.06)")
-                          : r === "Stolen item / theft concern"
-                            ? (t.isDark ? "rgba(127,29,29,0.22)" : "#fef2f2")
-                            : "transparent",
-                      },
-                    ]}
-                    onPress={() => setReason(r)}
-                    activeOpacity={0.7}
-                  >
-                    <View style={[styles.radio, reason === r && { borderColor: t.accent }]}>
-                      {reason === r && <View style={[styles.radioInner, { backgroundColor: t.accent }]} />}
-                    </View>
-                    <Text style={[
-                      styles.reasonText,
-                      { color: r === "Stolen item / theft concern" ? "#dc2626" : t.text },
-                      r === "Stolen item / theft concern" && { fontWeight: "800" },
-                    ]}>
-                      {r}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-
-                {isStolen && (
-                  <View style={[styles.warningBox, { borderColor: t.isDark ? "rgba(245,158,11,0.45)" : "#fcd34d", backgroundColor: t.isDark ? "rgba(146,64,14,0.22)" : "#fffbeb" }]}>
-                    <Ionicons name="warning" size={16} color="#f59e0b" />
-                    <Text style={{ color: t.isDark ? "#f6c66a" : "#92400e", fontSize: 12, fontWeight: "600", flex: 1 }}>
-                      High priority: select this only if theft is suspected.
-                    </Text>
-                  </View>
-                )}
-
-                {isOther && (
-                  <>
-                    <TextInput
-                      style={[styles.input, { backgroundColor: t.inputBg, color: t.text, borderColor: t.inputBorder }]}
-                      placeholder="Enter report reason"
-                      placeholderTextColor={t.muted}
-                      value={customReason}
-                      onChangeText={(txt) => setCustomReason(txt.slice(0, REPORT_REASON_MAX_LENGTH))}
-                      maxLength={REPORT_REASON_MAX_LENGTH}
-                    />
-                    <Text style={[styles.charCount, { color: t.muted }]}>{customReason.length}/{REPORT_REASON_MAX_LENGTH}</Text>
-                  </>
-                )}
-
-                <TextInput
-                  style={[styles.input, styles.textArea, { backgroundColor: t.inputBg, color: t.text, borderColor: t.inputBorder, marginTop: 12 }]}
-                  placeholder="Additional details (optional)"
-                  placeholderTextColor={t.muted}
-                  value={details}
-                  onChangeText={(txt) => setDetails(txt.slice(0, REPORT_DETAILS_MAX_LENGTH))}
-                  multiline
-                  maxLength={REPORT_DETAILS_MAX_LENGTH}
-                />
-                <Text style={[styles.charCount, { color: t.muted }]}>{details.length}/{REPORT_DETAILS_MAX_LENGTH}</Text>
-
-                {error ? <Text style={styles.error}>{error}</Text> : null}
-
-                <TouchableOpacity
-                  style={[styles.submitBtn, { backgroundColor: t.accent, opacity: reason && !submitting && (!isOther || customReason.trim()) ? 1 : 0.5 }]}
-                  onPress={handleSubmit}
-                  disabled={!reason || submitting || (isOther && !customReason.trim())}
-                >
-                  {submitting ? <ActivityIndicator color="#fff" /> : <Text style={styles.submitText}>Submit Report</Text>}
-                </TouchableOpacity>
-              </ScrollView>
-            )}
+    <BottomSheet visible={visible} onClose={handleClose} heightFraction={0.65}>
+      <View className="px-5 pt-2 pb-4 flex-1">
+        {submitted ? (
+          <View className="flex-1 items-center justify-center gap-3 px-4">
+            <Ionicons name="checkmark-circle" size={48} color="#22c55e" />
+            <Text className="text-lg font-extrabold text-ink dark:text-ink-dk">Report submitted</Text>
+            <Text className="text-sm text-subtext dark:text-subtext-dk text-center leading-5">
+              Thanks for helping keep the community safe. We'll review this shortly.
+            </Text>
+            <TouchableOpacity
+              className="bg-primary dark:bg-primary-dk rounded-xl px-8 py-3 mt-2"
+              onPress={handleClose}
+            >
+              <Text className="text-white font-bold text-sm">Done</Text>
+            </TouchableOpacity>
           </View>
-        </SafeAreaView>
+        ) : (
+          <ScrollView showsVerticalScrollIndicator={false}>
+            {/* Header */}
+            <Text className="text-xl font-black text-ink dark:text-ink-dk mb-1">Report</Text>
+            <Text className="text-sm text-subtext dark:text-subtext-dk mb-5">{targetLabel}</Text>
+
+            {/* Reason options */}
+            {reasons.map((r) => (
+              <TouchableOpacity
+                key={r}
+                onPress={() => setReason(r)}
+                className={`flex-row items-center px-4 py-3.5 rounded-xl mb-2 border ${
+                  reason === r
+                    ? "bg-primary/10 dark:bg-primary-dk/10 border-primary dark:border-primary-dk"
+                    : "bg-card dark:bg-card-dk border-border dark:border-border-dk"
+                }`}
+              >
+                <View className={`w-4 h-4 rounded-full border-2 mr-3 items-center justify-center ${
+                  reason === r
+                    ? "border-primary dark:border-primary-dk bg-primary dark:bg-primary-dk"
+                    : "border-muted dark:border-muted-dk"
+                }`} />
+                <Text className={`text-sm font-semibold flex-1 ${
+                  reason === r ? "text-primary dark:text-primary-dk" : "text-ink dark:text-ink-dk"
+                }`}>
+                  {r}
+                </Text>
+              </TouchableOpacity>
+            ))}
+
+            {/* Stolen item warning */}
+            {isStolen && (
+              <View className="flex-row items-center gap-2 p-2.5 rounded-lg border border-yellow-300 dark:border-yellow-700/50 bg-yellow-50 dark:bg-yellow-900/20 mb-2">
+                <Ionicons name="warning" size={16} color="#f59e0b" />
+                <Text className="text-xs font-semibold flex-1 text-yellow-800 dark:text-yellow-300">
+                  High priority: select this only if theft is suspected.
+                </Text>
+              </View>
+            )}
+
+            {/* Custom reason input for "Other" */}
+            {isOther && (
+              <>
+                <TextInput
+                  className="bg-input-bg dark:bg-input-bg-dk border border-input-border dark:border-input-border-dk rounded-xl px-4 py-3 text-sm text-ink dark:text-ink-dk mt-2"
+                  placeholder="Enter report reason"
+                  placeholderTextColor={t.muted}
+                  value={customReason}
+                  onChangeText={(txt) => setCustomReason(txt.slice(0, REPORT_REASON_MAX_LENGTH))}
+                  maxLength={REPORT_REASON_MAX_LENGTH}
+                />
+                <Text className="text-xs text-right mt-0.5 text-muted dark:text-muted-dk">
+                  {customReason.length}/{REPORT_REASON_MAX_LENGTH}
+                </Text>
+              </>
+            )}
+
+            {/* Details input */}
+            <TextInput
+              className="bg-input-bg dark:bg-input-bg-dk border border-input-border dark:border-input-border-dk rounded-xl px-4 py-3 text-sm text-ink dark:text-ink-dk mt-2 mb-1"
+              placeholder="Additional details (optional)"
+              placeholderTextColor={t.muted}
+              value={details}
+              onChangeText={(txt) => setDetails(txt.slice(0, REPORT_DETAILS_MAX_LENGTH))}
+              multiline
+              numberOfLines={3}
+              maxLength={REPORT_DETAILS_MAX_LENGTH}
+            />
+            <Text className="text-xs text-right mb-2 text-muted dark:text-muted-dk">
+              {details.length}/{REPORT_DETAILS_MAX_LENGTH}
+            </Text>
+
+            {/* Error */}
+            {error ? (
+              <Text className="text-red-500 text-sm font-semibold mt-1 mb-2">{error}</Text>
+            ) : null}
+
+            {/* Submit button */}
+            <TouchableOpacity
+              className={`bg-red-500 rounded-xl p-4 items-center ${!reason || submitting || (isOther && !customReason.trim()) ? "opacity-40" : ""}`}
+              onPress={handleSubmit}
+              disabled={!reason || submitting || (isOther && !customReason.trim())}
+            >
+              {submitting ? <ActivityIndicator color="#fff" /> : <Text className="text-white font-bold">Submit Report</Text>}
+            </TouchableOpacity>
+          </ScrollView>
+        )}
       </View>
-    </Modal>
+    </BottomSheet>
   );
 }
-
-const styles = StyleSheet.create({
-  card: { maxHeight: "85%", borderRadius: 20, borderWidth: 1, overflow: "hidden" },
-  header: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", padding: 16, paddingBottom: 8 },
-  headerTitle: { fontSize: 18, fontWeight: "900" },
-  content: { padding: 16, paddingTop: 4 },
-  label: { fontSize: 14, marginBottom: 12 },
-  sectionLabel: { fontSize: 12, fontWeight: "700", marginBottom: 8, textTransform: "uppercase", letterSpacing: 0.5 },
-  reasonRow: { flexDirection: "row", alignItems: "center", gap: 10, padding: 12, borderRadius: 10, borderWidth: 1, marginBottom: 6 },
-  radio: { width: 20, height: 20, borderRadius: 10, borderWidth: 2, borderColor: "rgba(255,255,255,0.3)", justifyContent: "center", alignItems: "center" },
-  radioInner: { width: 10, height: 10, borderRadius: 5 },
-  reasonText: { fontSize: 14, fontWeight: "600", flex: 1 },
-  warningBox: { flexDirection: "row", alignItems: "center", gap: 8, padding: 10, borderRadius: 8, borderWidth: 1, marginBottom: 8 },
-  input: { borderRadius: 10, padding: 12, fontSize: 14, borderWidth: 1, marginTop: 8 },
-  textArea: { minHeight: 80, textAlignVertical: "top" },
-  charCount: { fontSize: 11, textAlign: "right", marginTop: 2 },
-  error: { color: "#ef4444", fontSize: 13, fontWeight: "600", marginTop: 8 },
-  submitBtn: { borderRadius: 14, paddingVertical: 16, alignItems: "center", marginTop: 16 },
-  submitText: { color: "#fff", fontWeight: "700", fontSize: 16 },
-  successView: { alignItems: "center", padding: 24, gap: 8 },
-  successTitle: { fontSize: 18, fontWeight: "800" },
-  successSubtitle: { fontSize: 14, textAlign: "center", lineHeight: 20 },
-  doneBtn: { borderRadius: 12, paddingVertical: 12, paddingHorizontal: 32, marginTop: 8 },
-  doneBtnText: { color: "#fff", fontWeight: "700", fontSize: 15 },
-});
